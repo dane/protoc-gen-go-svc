@@ -1,0 +1,3 @@
+protoc-gen-go-svc
+*.swp
+example/build
