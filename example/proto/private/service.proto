@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package example.private;
+
+option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/private;private";
+
+import "google/protobuf/timestamp.proto";
+
+//gen:svc
+service People {
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc Fetch(FetchRequest) returns (FetchResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc List(ListRequest) returns (ListResponse);
+}
+
+message Person {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string full_name = 4;
+  int64 age = 5;
+  Employment employment = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  google.protobuf.Timestamp deleted_at = 9;
+
+  enum Employment {
+    UNDEFINED = 0;
+    FULL_TIME = 1;
+    PART_TIME = 2;
+    UNEMPLOYED = 3;
+  }
+}
+
+message CreateRequest {
+  //gen:svc validate min=2
+  string first_name = 1;
+
+  //gen:svc validate min=2
+  string last_name = 2;
+
+  //gen:svc validate required=true min=5
+  string full_name = 3;
+
+  //gen:svc validate required=true min=16
+  int64 age = 4;
+
+  //gen:svc validate required=true in=FULL_TIME,PART_TIME,UNEMPLOYED
+  Person.Employment employment = 5;
+}
+
+message CreateResponse {
+  Person person = 1;
+}
+
+message FetchRequest {
+  string id = 1;
+}
+
+message FetchResponse {
+  Person person = 1;
+}
+
+message DeleteRequest {
+  string id = 1;
+}
+
+message DeleteResponse {
+  Person person = 1;
+}
+
+message ListRequest {}
+
+message ListResponse {
+  repeated Person people = 1;
+}
