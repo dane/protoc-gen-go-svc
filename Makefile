@@ -17,3 +17,7 @@ example: install
 			$(PWD)/example/proto/v2/service.proto \
 			$(PWD)/example/proto/private/service.proto
 			# $(PWD)/example/proto/v1/service.proto \
+
+.PHONY: test
+test: example
+	cd example && go build -o build/people-api ./cmd/people-api/...
