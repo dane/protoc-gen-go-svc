@@ -6,8 +6,8 @@ import (
 
 func generateLatestService(file *protogen.GeneratedFile, service, private *Service) error {
 	packageContext := protogen.GoImportPath("context")
-	packageValidation := protogen.GoImportPath("github.com/ozzo/ozzo-validation/v4")
-	packageValidationIs := protogen.GoImportPath("github.com/ozzo/ozzo-validation/v4/is")
+	packageValidation := protogen.GoImportPath("github.com/go-ozzo/ozzo-validation/v4")
+	packageValidationIs := protogen.GoImportPath("github.com/go-ozzo/ozzo-validation/v4/is")
 	packageCodes := protogen.GoImportPath("google.golang.org/grpc/codes")
 	packageStatus := protogen.GoImportPath("google.golang.org/grpc/status")
 
