@@ -9,6 +9,8 @@ import (
 
 func generateLatestConverters(file *protogen.GeneratedFile, service, private *Service) error {
 	// Create Converter interface.
+	file.P("func NewConverter() Converter { return converter{} }")
+
 	file.P("type Converter interface {")
 	for _, method := range service.Methods {
 
@@ -17,8 +19,8 @@ func generateLatestConverters(file *protogen.GeneratedFile, service, private *Se
 			return err
 		}
 
-		generateToPrivateConverterIface(file, method.Input.GoIdent, delegateMethod.Input.GoIdent)
-		generateToPublicConverterIface(file, method.Output.GoIdent, delegateMethod.Output.GoIdent)
+		generateToPrivateConverterIface(file, method.Input.GoIdent, delegateMethod.Input.GoIdent, true)
+		generateToPublicConverterIface(file, method.Output.GoIdent, delegateMethod.Output.GoIdent, true)
 
 		// These message do not need to be converted between the latest and
 		// private service.
@@ -44,8 +46,8 @@ func generateLatestConverters(file *protogen.GeneratedFile, service, private *Se
 			return err
 		}
 
-		generateToPrivateConverterIface(file, message.GoIdent, delegateMessage.GoIdent)
-		generateToPublicConverterIface(file, message.GoIdent, delegateMessage.GoIdent)
+		generateToPrivateConverterIface(file, message.GoIdent, delegateMessage.GoIdent, true)
+		generateToPublicConverterIface(file, message.GoIdent, delegateMessage.GoIdent, true)
 	}
 
 	// Add enums to interface that are outside of top-level input and output
@@ -60,8 +62,8 @@ func generateLatestConverters(file *protogen.GeneratedFile, service, private *Se
 			return err
 		}
 
-		generateToPrivateConverterIface(file, enum.GoIdent, delegateEnum.GoIdent)
-		generateToPublicConverterIface(file, enum.GoIdent, delegateEnum.GoIdent)
+		generateToPrivateConverterIface(file, enum.GoIdent, delegateEnum.GoIdent, false)
+		generateToPublicConverterIface(file, enum.GoIdent, delegateEnum.GoIdent, false)
 	}
 	file.P("}")
 
@@ -118,6 +120,10 @@ func generateLatestConverters(file *protogen.GeneratedFile, service, private *Se
 		if err := generateToPrivateConverterFunc(file, message.Message, delegateMessage.Message); err != nil {
 			return err
 		}
+
+		if err := generateToPublicConverterFunc(file, message.Message, delegateMessage.Message); err != nil {
+			return err
+		}
 	}
 
 	// Create converter functions that are outside of top-level input and output
@@ -163,13 +169,18 @@ func fieldMatch(current, next *protogen.Field) bool {
 	return false
 }
 
-func generateToPublicConverterIface(file *protogen.GeneratedFile, publicOut, privateOut protogen.GoIdent) {
+func generateToPublicConverterIface(file *protogen.GeneratedFile, publicOut, privateOut protogen.GoIdent, isPointer bool) {
 	publicOutName := publicOut.GoName
 	publicOutPath := publicOut.GoImportPath
 
 	privateOutName := privateOut.GoName
 
-	file.P("ToPublic", publicOutName, "(*privatepb.", privateOutName, ") (*publicpb.", publicOutName, ", error)")
+	var ptr string
+	if isPointer {
+		ptr = "*"
+	}
+
+	file.P("ToPublic", publicOutName, "(", ptr, "privatepb.", privateOutName, ") (", ptr, "publicpb.", publicOutName, ", error)")
 
 	if messages, ok := messagesByImportPath[publicOutPath]; ok {
 		if m, ok := messages[publicOutName]; ok {
@@ -184,13 +195,17 @@ func generateToPublicConverterIface(file *protogen.GeneratedFile, publicOut, pri
 	}
 }
 
-func generateToPrivateConverterIface(file *protogen.GeneratedFile, publicIn, privateIn protogen.GoIdent) {
+func generateToPrivateConverterIface(file *protogen.GeneratedFile, publicIn, privateIn protogen.GoIdent, isPointer bool) {
 	privateInName := privateIn.GoName
 	privateInPath := privateIn.GoImportPath
 
 	publicInName := publicIn.GoName
 
-	file.P("ToPrivate", privateInName, "(*publicpb.", publicInName, ") *privatepb.", privateInName)
+	var ptr string
+	if isPointer {
+		ptr = "*"
+	}
+	file.P("ToPrivate", privateInName, "(", ptr, "publicpb.", publicInName, ") ", ptr, "privatepb.", privateInName)
 
 	if messages, ok := messagesByImportPath[privateInPath]; ok {
 		if m, ok := messages[privateInName]; ok {
@@ -222,7 +237,7 @@ func generateToPrivateConverterFunc(file *protogen.GeneratedFile, publicIn, priv
 		if fieldMatch(field, delegateField) {
 			file.P("out.", delegateField.GoName, "=", "in.", field.GoName)
 		} else {
-			file.P("out.", delegateField.GoName, "=", "s.ToPrivate", delegateField.GoName, "(in.", field.GoName, ")")
+			file.P("out.", delegateField.GoName, "=", "c.ToPrivate", funcName(delegateField), "(in.", field.GoName, ")")
 		}
 	}
 	file.P("return &out")
@@ -252,7 +267,7 @@ func generateToPublicConverterFunc(file *protogen.GeneratedFile, publicOut, priv
 		if fieldMatch(field, delegateField) {
 			file.P("out.", field.GoName, "=", "in.", delegateField.GoName)
 		} else {
-			file.P("out.", field.GoName, ", err =", "s.ToPublic", field.GoName, "(in.", delegateField.GoName, ")")
+			file.P("out.", field.GoName, ", err =", "c.ToPublic", funcName(field), "(in.", delegateField.GoName, ")")
 			file.P("if err != nil { return nil, err }")
 		}
 	}
@@ -264,8 +279,6 @@ func generateToPublicConverterFunc(file *protogen.GeneratedFile, publicOut, priv
 
 	return nil
 }
-
-// ------- ENUMS
 
 func generateToPrivateConverterEnumFunc(file *protogen.GeneratedFile, publicIn, privateIn *protogen.Enum) error {
 	publicInName := publicIn.GoIdent.GoName
@@ -283,12 +296,11 @@ func generateToPrivateConverterEnumFunc(file *protogen.GeneratedFile, publicIn, 
 		file.P("case publicpb.", value.GoIdent.GoName, ":")
 		file.P("return privatepb.", delegateValue.GoIdent.GoName)
 	}
+	file.P("}")
 
 	if len(privateIn.Values) > 0 {
-		file.P("default:")
 		file.P("return privatepb.", privateIn.Values[0].GoIdent.GoName)
 	}
-	file.P("}")
 	file.P("}")
 
 	enumsByImportPath[privateInPath][privateInName].Generated = true
@@ -310,7 +322,7 @@ func generateToPublicConverterEnumFunc(file *protogen.GeneratedFile, publicOut, 
 			return err
 		}
 		file.P("case privatepb.", delegateValue.GoIdent.GoName, ":")
-		file.P("return publicpb.", value.GoIdent.GoName)
+		file.P("return publicpb.", value.GoIdent.GoName, ", nil")
 
 		receiveValues, err := findEnumReceiveValues(value, privateOut)
 		if err != nil {
@@ -324,15 +336,21 @@ func generateToPublicConverterEnumFunc(file *protogen.GeneratedFile, publicOut, 
 			}
 		}
 	}
+	file.P("}")
 
 	if len(publicOut.Values) > 0 {
-		file.P("default:")
-		file.P(`return nil, status.Errorf(codes.FailedPrecondition, "unexpected value %q", in)`)
+		file.P("return publicpb.", publicOut.Values[0].GoIdent.GoName, `, status.Errorf(codes.FailedPrecondition, "unexpected value %q", in)`)
 	}
-	file.P("}")
 	file.P("}")
 
 	enumsByImportPath[publicOutPath][publicOutName].Generated = true
 
 	return nil
+}
+
+func funcName(field *protogen.Field) string {
+	if field.Enum != nil {
+		return field.Enum.GoIdent.GoName
+	}
+	return field.GoName
 }

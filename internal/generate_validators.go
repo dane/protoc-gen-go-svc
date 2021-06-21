@@ -12,12 +12,14 @@ func generateValidators(file *protogen.GeneratedFile, pkgName string, service *S
 	}
 	file.P("}")
 
+	file.P("func NewValidator() Validator { return validator{} }")
+
 	file.P("type validator struct {}")
 
 	for _, method := range service.Methods {
 		name := method.Input.GoIdent.GoName
 		file.P("func (v validator) Validate", name, "(in *", pkgName, ".", name, ") error {")
-		file.P("err := validation.Validate(in,")
+		file.P("err := validation.ValidateStruct(in,")
 		for _, field := range method.Input.Fields {
 			validations, err := generateFieldValidations(pkgName, field)
 			if err != nil {

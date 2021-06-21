@@ -17,10 +17,13 @@ type Validator interface {
 	ValidateDeleteRequest(*privatepb.DeleteRequest) error
 	ValidateListRequest(*privatepb.ListRequest) error
 }
+
+func NewValidator() Validator { return validator{} }
+
 type validator struct{}
 
 func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
-	err := validation.Validate(in,
+	err := validation.ValidateStruct(in,
 		validation.Field(&in.FirstName,
 			validation.Length(2, 0),
 		),
@@ -46,29 +49,34 @@ func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
 	return nil
 }
 func (v validator) ValidateFetchRequest(in *privatepb.FetchRequest) error {
-	err := validation.Validate(in)
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
-	err := validation.Validate(in)
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
 func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
-	err := validation.Validate(in)
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
 
+type CreateRequestMutator func(*privatepb.CreateRequest)
+type FetchRequestMutator func(*privatepb.FetchRequest)
+type DeleteRequestMutator func(*privatepb.DeleteRequest)
+type ListRequestMutator func(*privatepb.ListRequest)
 type Service struct {
 	Validator
+	privatepb.PeopleServer
 	Impl privatepb.PeopleServer
 }
 

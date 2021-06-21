@@ -17,6 +17,7 @@ func generateLatestService(file *protogen.GeneratedFile, service, private *Servi
 	file.P(packageContext)
 	file.P("publicpb", service.GoImportPath)
 	file.P("privatepb", private.GoImportPath)
+	file.P("private", serviceImportPath(private))
 	file.P("validation", packageValidation)
 	file.P("is", packageValidationIs)
 	file.P("codes", packageCodes)
@@ -34,6 +35,7 @@ func generateLatestService(file *protogen.GeneratedFile, service, private *Servi
 	}
 
 	file.P("type Service struct {")
+	file.P("publicpb.", service.Service.GoName, "Server")
 	file.P("Validator")
 	file.P("Converter")
 	file.P("Private *private.Service")
@@ -60,17 +62,17 @@ func generateLatestService(file *protogen.GeneratedFile, service, private *Servi
 		file.P("return out, err")
 		file.P("}")
 
-		file.P("func(s *Service)", method.GoName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...privatepb.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
+		file.P("func(s *Service)", method.GoName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
 		file.P("if err := s.Validate", publicInName, "(in); err != nil {")
-		file.P("return nil, err")
+		file.P("return nil, nil, err")
 		file.P("}")
 
 		file.P("privIn := s.ToPrivate", privateInName, "(in)")
 		file.P("privOut, err := s.Private.", delegateMethod.GoName, "(ctx, privIn)")
-		file.P("if err != nil { return nil, err }")
+		file.P("if err != nil { return nil, nil, err }")
 		file.P("out, err := s.ToPublic", publicOutName, "(privOut)")
-		file.P("if err != nil { return nil, err }")
-		file.P("return out, err")
+		file.P("if err != nil { return nil, nil, err }")
+		file.P("return out, privOut, err")
 		file.P("}")
 	}
 

@@ -28,8 +28,13 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 		return err
 	}
 
+	for _, method := range service.Methods {
+		file.P("type ", method.Input.GoIdent.GoName, "Mutator func(*privatepb.", method.Input.GoIdent.GoName, ")")
+	}
+
 	file.P("type Service struct {")
 	file.P("Validator")
+	file.P("privatepb.", service.Service.GoName, "Server")
 	file.P("Impl privatepb.", service.Service.GoName, "Server")
 	file.P("}")
 

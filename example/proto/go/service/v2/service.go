@@ -4,6 +4,7 @@ import (
 	"context"
 	publicpb "github.com/dane/protoc-gen-go-svc/example/proto/go/v2"
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
+	private "github.com/dane/protoc-gen-go-svc/example/proto/go/service/private"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
 	codes "google.golang.org/grpc/codes"
@@ -17,17 +18,20 @@ type Validator interface {
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 }
+
+func NewValidator() Validator { return validator{} }
+
 type validator struct{}
 
 func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.Validate(in)
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.Validate(in,
+	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
 			is.UUID,
@@ -39,12 +43,13 @@ func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
-	err := validation.Validate(in)
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
+func NewConverter() Converter { return converter{} }
 
 type Converter interface {
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
@@ -55,8 +60,8 @@ type Converter interface {
 	ToPublicDeleteResponse(*privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
 	ToPrivatePerson(*publicpb.Person) *privatepb.Person
 	ToPublicPerson(*privatepb.Person) (*publicpb.Person, error)
-	ToPrivatePerson_Employment(*publicpb.Person_Employment) *privatepb.Person_Employment
-	ToPublicPerson_Employment(*privatepb.Person_Employment) (*publicpb.Person_Employment, error)
+	ToPrivatePerson_Employment(publicpb.Person_Employment) privatepb.Person_Employment
+	ToPublicPerson_Employment(privatepb.Person_Employment) (publicpb.Person_Employment, error)
 }
 type converter struct{}
 
@@ -64,13 +69,13 @@ func (c converter) ToPrivateCreateRequest(in *publicpb.CreateRequest) *privatepb
 	var out privatepb.CreateRequest
 	out.FullName = in.FullName
 	out.Age = in.Age
-	out.Employment = s.ToPrivateEmployment(in.Employment)
+	out.Employment = c.ToPrivatePerson_Employment(in.Employment)
 	return &out
 }
 func (c converter) ToPublicCreateResponse(in *privatepb.CreateResponse) (*publicpb.CreateResponse, error) {
 	var out publicpb.CreateResponse
 	var err error
-	out.Person, err = s.ToPublicPerson(in.Person)
+	out.Person, err = c.ToPublicPerson(in.Person)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +89,7 @@ func (c converter) ToPrivateFetchRequest(in *publicpb.GetRequest) *privatepb.Fet
 func (c converter) ToPublicGetResponse(in *privatepb.FetchResponse) (*publicpb.GetResponse, error) {
 	var out publicpb.GetResponse
 	var err error
-	out.Person, err = s.ToPublicPerson(in.Person)
+	out.Person, err = c.ToPublicPerson(in.Person)
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +110,24 @@ func (c converter) ToPrivatePerson(in *publicpb.Person) *privatepb.Person {
 	out.Id = in.Id
 	out.FullName = in.FullName
 	out.Age = in.Age
-	out.Employment = s.ToPrivateEmployment(in.Employment)
+	out.Employment = c.ToPrivatePerson_Employment(in.Employment)
 	out.CreatedAt = in.CreatedAt
 	out.UpdatedAt = in.UpdatedAt
 	return &out
+}
+func (c converter) ToPublicPerson(in *privatepb.Person) (*publicpb.Person, error) {
+	var out publicpb.Person
+	var err error
+	out.Id = in.Id
+	out.FullName = in.FullName
+	out.Age = in.Age
+	out.Employment, err = c.ToPublicPerson_Employment(in.Employment)
+	if err != nil {
+		return nil, err
+	}
+	out.CreatedAt = in.CreatedAt
+	out.UpdatedAt = in.UpdatedAt
+	return &out, err
 }
 func (c converter) ToPrivatePerson_Employment(in publicpb.Person_Employment) privatepb.Person_Employment {
 	switch in {
@@ -120,26 +139,25 @@ func (c converter) ToPrivatePerson_Employment(in publicpb.Person_Employment) pri
 		return privatepb.Person_PART_TIME
 	case publicpb.Person_UNEMPLOYED:
 		return privatepb.Person_UNEMPLOYED
-	default:
-		return privatepb.Person_UNDEFINED
 	}
+	return privatepb.Person_UNDEFINED
 }
 func (c converter) ToPublicPerson_Employment(in privatepb.Person_Employment) (publicpb.Person_Employment, error) {
 	switch in {
 	case privatepb.Person_UNDEFINED:
-		return publicpb.Person_UNSET
+		return publicpb.Person_UNSET, nil
 	case privatepb.Person_FULL_TIME:
-		return publicpb.Person_FULL_TIME
+		return publicpb.Person_FULL_TIME, nil
 	case privatepb.Person_PART_TIME:
-		return publicpb.Person_PART_TIME
+		return publicpb.Person_PART_TIME, nil
 	case privatepb.Person_UNEMPLOYED:
-		return publicpb.Person_UNEMPLOYED
-	default:
-		return nil, status.Errorf(codes.FailedPrecondition, "unexpected value %q", in)
+		return publicpb.Person_UNEMPLOYED, nil
 	}
+	return publicpb.Person_UNSET, status.Errorf(codes.FailedPrecondition, "unexpected value %q", in)
 }
 
 type Service struct {
+	publicpb.PeopleServer
 	Validator
 	Converter
 	Private *private.Service
@@ -152,20 +170,20 @@ func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publ
 	out, _, err := s.CreateImpl(ctx, in)
 	return out, err
 }
-func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mutators ...privatepb.CreateRequestMutator) (*publicpb.CreateResponse, *privatepb.CreateResponse, error) {
+func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mutators ...private.CreateRequestMutator) (*publicpb.CreateResponse, *privatepb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	privIn := s.ToPrivateCreateRequest(in)
 	privOut, err := s.Private.Create(ctx, privIn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, err := s.ToPublicCreateResponse(privOut)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return out, err
+	return out, privOut, err
 }
 func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
 	if err := s.ValidateGetRequest(in); err != nil {
@@ -174,20 +192,20 @@ func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.G
 	out, _, err := s.GetImpl(ctx, in)
 	return out, err
 }
-func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators ...privatepb.FetchRequestMutator) (*publicpb.GetResponse, *privatepb.FetchResponse, error) {
+func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators ...private.FetchRequestMutator) (*publicpb.GetResponse, *privatepb.FetchResponse, error) {
 	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	privIn := s.ToPrivateFetchRequest(in)
 	privOut, err := s.Private.Fetch(ctx, privIn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, err := s.ToPublicGetResponse(privOut)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return out, err
+	return out, privOut, err
 }
 func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
@@ -196,18 +214,18 @@ func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publ
 	out, _, err := s.DeleteImpl(ctx, in)
 	return out, err
 }
-func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mutators ...privatepb.DeleteRequestMutator) (*publicpb.DeleteResponse, *privatepb.DeleteResponse, error) {
+func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mutators ...private.DeleteRequestMutator) (*publicpb.DeleteResponse, *privatepb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	privIn := s.ToPrivateDeleteRequest(in)
 	privOut, err := s.Private.Delete(ctx, privIn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out, err := s.ToPublicDeleteResponse(privOut)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return out, err
+	return out, privOut, err
 }
