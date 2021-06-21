@@ -1,6 +1,6 @@
 .PHONY: install
 install:
-	go install ./...
+	go install
 
 .PHONY: build
 build:
@@ -15,5 +15,5 @@ example: install
 		--go-grpc_out=$(shell echo ${GOPATH})/src \
 		--go-svc_out=verbose=true:example/proto/go --go-svc_opt=paths=source_relative \
 			$(PWD)/example/proto/v2/service.proto \
-			$(PWD)/example/proto/v1/service.proto \
 			$(PWD)/example/proto/private/service.proto
+			# $(PWD)/example/proto/v1/service.proto \
