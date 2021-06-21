@@ -4,8 +4,8 @@ import (
 	"context"
 	publicpb "github.com/dane/protoc-gen-go-svc/example/proto/go/v2"
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
-	validation "github.com/ozzo/ozzo-validation/v4"
-	is "github.com/ozzo/ozzo-validation/v4/is"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	is "github.com/go-ozzo/ozzo-validation/v4/is"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
