@@ -1,10 +1,7 @@
 package internal
 
 import (
-	"fmt"
-
 	"google.golang.org/protobuf/compiler/protogen"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func generatePrivateService(file *protogen.GeneratedFile, service *Service) error {
@@ -37,19 +34,7 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 
 	for _, method := range service.Methods {
 		for _, field := range method.Input.Fields {
-			var fieldType string
-			switch field.Desc.Kind() {
-			case protoreflect.MessageKind:
-				fieldType = fmt.Sprintf("*privatepb.%s", field.Message.GoIdent.GoName)
-			case protoreflect.EnumKind:
-				fieldType = fmt.Sprintf("privatepb.%s", field.Enum.GoIdent.GoName)
-			case protoreflect.FloatKind:
-				fieldType = "float64"
-			default:
-				fieldType = field.Desc.Kind().String()
-
-			}
-			file.P("func Set", field.GoIdent.GoName, "(value ", fieldType, ") ", method.Input.GoIdent.GoName, "Mutator {")
+			file.P("func Set", field.GoIdent.GoName, "(value ", fieldType("privatepb", field), ") ", method.Input.GoIdent.GoName, "Mutator {")
 			file.P("return func(in *privatepb.", method.Input.GoIdent.GoName, ") {")
 			file.P("in.", field.GoName, " = value")
 			file.P("}")

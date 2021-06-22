@@ -12,13 +12,21 @@ service People {
   rpc Fetch(FetchRequest) returns (FetchResponse);
   rpc Delete(DeleteRequest) returns (DeleteResponse);
   rpc List(ListRequest) returns (ListResponse);
+  rpc Update(UpdateRequest) returns (UpdateResponse);
 }
 
 message Person {
   string id = 1;
+  //gen:svc validate min=2
   string first_name = 2;
+
+  //gen:svc validate min=2
   string last_name = 3;
+
+  //gen:svc validate required=true min=5
   string full_name = 4;
+
+  //gen:svc validate required=true min=16
   int64 age = 5;
   Employment employment = 6;
   google.protobuf.Timestamp created_at = 7;
@@ -74,4 +82,16 @@ message ListRequest {}
 
 message ListResponse {
   repeated Person people = 1;
+}
+
+message UpdateRequest {
+  //gen:svc validate required=true is=uuid
+  string id = 1;
+
+  //gen:svc validate required=true
+  Person person = 2;
+}
+
+message UpdateResponse {
+  Person person = 1;
 }

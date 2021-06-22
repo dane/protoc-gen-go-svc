@@ -39,3 +39,15 @@ func receiveAnnotations(commentSet protogen.CommentSet) ([]string, error) {
 
 	return values, nil
 }
+
+func validateAnnotations(commentSet protogen.CommentSet) []string {
+	prefix := fmt.Sprintf("%s validate ", GenSvc)
+	var comments []string
+	for _, comment := range mergeComments(commentSet) {
+		if !strings.HasPrefix(comment, prefix) {
+			continue
+		}
+		comments = append(comments, comment)
+	}
+	return comments
+}

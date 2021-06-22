@@ -22,6 +22,7 @@ type PeopleClient interface {
 	Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 }
 
 type peopleClient struct {
@@ -68,6 +69,15 @@ func (c *peopleClient) List(ctx context.Context, in *ListRequest, opts ...grpc.C
 	return out, nil
 }
 
+func (c *peopleClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error) {
+	out := new(UpdateResponse)
+	err := c.cc.Invoke(ctx, "/example.private.People/Update", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PeopleServer is the server API for People service.
 // All implementations must embed UnimplementedPeopleServer
 // for forward compatibility
@@ -76,6 +86,7 @@ type PeopleServer interface {
 	Fetch(context.Context, *FetchRequest) (*FetchResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
+	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	mustEmbedUnimplementedPeopleServer()
 }
 
@@ -94,6 +105,9 @@ func (UnimplementedPeopleServer) Delete(context.Context, *DeleteRequest) (*Delet
 }
 func (UnimplementedPeopleServer) List(context.Context, *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedPeopleServer) Update(context.Context, *UpdateRequest) (*UpdateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedPeopleServer) mustEmbedUnimplementedPeopleServer() {}
 
@@ -180,6 +194,24 @@ func _People_List_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _People_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PeopleServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/example.private.People/Update",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeopleServer).Update(ctx, req.(*UpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // People_ServiceDesc is the grpc.ServiceDesc for People service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -202,6 +234,10 @@ var People_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _People_List_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _People_Update_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

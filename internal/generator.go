@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type Generator struct {
@@ -21,8 +22,10 @@ type Service struct {
 
 type Message struct {
 	*protogen.Message
-	Generated bool
-	Skip      bool
+	Generated    bool
+	Validated    bool
+	MustValidate bool
+	Skip         bool
 }
 
 type Enum struct {
@@ -96,7 +99,18 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 
 			addEnums(message.Enums)
 
-			messagesByImportPath[path][name] = &Message{Message: message}
+			var mustValidate bool
+			for _, field := range message.Fields {
+				if len(validateAnnotations(field.Comments)) > 0 {
+					mustValidate = true
+					break
+				}
+			}
+
+			messagesByImportPath[path][name] = &Message{
+				Message:      message,
+				MustValidate: mustValidate,
+			}
 		}
 
 		addEnums(file.Enums)
@@ -173,4 +187,20 @@ func addEnums(enums []*protogen.Enum) {
 
 		enumsByImportPath[path][name] = &Enum{Enum: enum}
 	}
+}
+
+func fieldType(pkgName string, field *protogen.Field) string {
+	switch field.Desc.Kind() {
+	case protoreflect.MessageKind:
+		return fmt.Sprintf("*privatepb.%s", field.Message.GoIdent.GoName)
+	case protoreflect.EnumKind:
+		return fmt.Sprintf("privatepb.%s", field.Enum.GoIdent.GoName)
+	case protoreflect.FloatKind:
+		return "float64"
+	}
+	return field.Desc.Kind().String()
+}
+
+func messageName(message *protogen.Message) string {
+	return message.GoIdent.GoName
 }

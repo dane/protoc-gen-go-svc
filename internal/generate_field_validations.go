@@ -22,11 +22,7 @@ func generateFieldValidations(pkgName string, field *protogen.Field) ([]string, 
 	var minFloat, maxFloat float64
 	var minIntSet, maxIntSet, minFloatSet, maxFloatSet bool
 
-	for _, comment := range mergeComments(field.Comments) {
-		if !strings.HasPrefix(comment, prefix) {
-			continue
-		}
-
+	for _, comment := range validateAnnotations(field.Comments) {
 		conditions := strings.Split(strings.TrimPrefix(comment, prefix), " ")
 		for _, condition := range conditions {
 			cond := strings.SplitN(condition, "=", 2)
@@ -187,6 +183,24 @@ func generateFieldValidations(pkgName string, field *protogen.Field) ([]string, 
 			println(fmt.Sprintf("min set: %v | max set: %v\n", minFloatSet, maxFloatSet))
 			return nil, validation.Validate(field.Desc.Kind(), validation.In(protoreflect.FloatKind))
 		}
+	}
+
+	var mustValidate bool
+	if field.Message != nil {
+		if path, ok := messagesByImportPath[field.Message.GoIdent.GoImportPath]; ok {
+			if message, ok := path[messageName(field.Message)]; ok {
+				mustValidate = message.MustValidate
+			}
+		}
+	}
+
+	if mustValidate {
+		validations = append(validations, fmt.Sprintf(
+			"validation.By(func(interface{}) error { return v.Validate%s(in.%s) })",
+			messageName(field.Message),
+			field.GoName,
+		),
+		)
 	}
 
 	return validations, nil

@@ -16,6 +16,8 @@ type Validator interface {
 	ValidateFetchRequest(*privatepb.FetchRequest) error
 	ValidateDeleteRequest(*privatepb.DeleteRequest) error
 	ValidateListRequest(*privatepb.ListRequest) error
+	ValidateUpdateRequest(*privatepb.UpdateRequest) error
+	ValidatePerson(*privatepb.Person) error
 }
 
 func NewValidator() Validator { return validator{} }
@@ -69,11 +71,50 @@ func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
 	}
 	return nil
 }
+func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+		validation.Field(&in.Person,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidatePerson(in *privatepb.Person) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FirstName,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.LastName,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.FullName,
+			validation.Required,
+			validation.Length(5, 0),
+		),
+		validation.Field(&in.Age,
+			validation.Required,
+			validation.Min(16),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 
 type CreateRequestMutator func(*privatepb.CreateRequest)
 type FetchRequestMutator func(*privatepb.FetchRequest)
 type DeleteRequestMutator func(*privatepb.DeleteRequest)
 type ListRequestMutator func(*privatepb.ListRequest)
+type UpdateRequestMutator func(*privatepb.UpdateRequest)
 
 func SetCreateRequest_FirstName(value string) CreateRequestMutator {
 	return func(in *privatepb.CreateRequest) {
@@ -110,6 +151,16 @@ func SetDeleteRequest_Id(value string) DeleteRequestMutator {
 		in.Id = value
 	}
 }
+func SetUpdateRequest_Id(value string) UpdateRequestMutator {
+	return func(in *privatepb.UpdateRequest) {
+		in.Id = value
+	}
+}
+func SetUpdateRequest_Person(value *privatepb.Person) UpdateRequestMutator {
+	return func(in *privatepb.UpdateRequest) {
+		in.Person = value
+	}
+}
 
 type Service struct {
 	Validator
@@ -140,4 +191,10 @@ func (s *Service) List(ctx context.Context, in *privatepb.ListRequest) (*private
 		return nil, err
 	}
 	return s.Impl.List(ctx, in)
+}
+func (s *Service) Update(ctx context.Context, in *privatepb.UpdateRequest) (*privatepb.UpdateResponse, error) {
+	if err := s.ValidateUpdateRequest(in); err != nil {
+		return nil, err
+	}
+	return s.Impl.Update(ctx, in)
 }
