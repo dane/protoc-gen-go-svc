@@ -30,6 +30,7 @@ func generateRegister(file *protogen.GeneratedFile, services []*Service, private
 	for i, service := range services {
 		file.P(service.GoPackageName, "Svc := &", service.GoPackageName, ".Service{")
 		file.P("Validator:", service.GoPackageName, ".NewValidator(),")
+		file.P("Converter:", service.GoPackageName, ".NewConverter(),")
 		file.P("Private: privateSvc,")
 		if i > 0 {
 			nextService := services[i-1]

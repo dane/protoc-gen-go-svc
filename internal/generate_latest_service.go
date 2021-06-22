@@ -63,10 +63,6 @@ func generateLatestService(file *protogen.GeneratedFile, service, private *Servi
 		file.P("}")
 
 		file.P("func(s *Service)", method.GoName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
-		file.P("if err := s.Validate", publicInName, "(in); err != nil {")
-		file.P("return nil, nil, err")
-		file.P("}")
-
 		file.P("privIn := s.ToPrivate", privateInName, "(in)")
 		file.P("privOut, err := s.Private.", delegateMethod.GoName, "(ctx, privIn)")
 		file.P("if err != nil { return nil, nil, err }")

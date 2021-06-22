@@ -15,6 +15,7 @@ func RegisterServer(s *grpc.Server, impl privatepb.PeopleServer) {
 	}
 	v2Svc := &v2.Service{
 		Validator: v2.NewValidator(),
+		Converter: v2.NewConverter(),
 		Private:   privateSvc,
 	}
 	v2pb.RegisterPeopleServer(s, v2Svc)
