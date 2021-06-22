@@ -74,6 +74,43 @@ type CreateRequestMutator func(*privatepb.CreateRequest)
 type FetchRequestMutator func(*privatepb.FetchRequest)
 type DeleteRequestMutator func(*privatepb.DeleteRequest)
 type ListRequestMutator func(*privatepb.ListRequest)
+
+func SetCreateRequest_FirstName(value string) CreateRequestMutator {
+	return func(in *privatepb.CreateRequest) {
+		in.FirstName = value
+	}
+}
+func SetCreateRequest_LastName(value string) CreateRequestMutator {
+	return func(in *privatepb.CreateRequest) {
+		in.LastName = value
+	}
+}
+func SetCreateRequest_FullName(value string) CreateRequestMutator {
+	return func(in *privatepb.CreateRequest) {
+		in.FullName = value
+	}
+}
+func SetCreateRequest_Age(value int64) CreateRequestMutator {
+	return func(in *privatepb.CreateRequest) {
+		in.Age = value
+	}
+}
+func SetCreateRequest_Employment(value privatepb.Person_Employment) CreateRequestMutator {
+	return func(in *privatepb.CreateRequest) {
+		in.Employment = value
+	}
+}
+func SetFetchRequest_Id(value string) FetchRequestMutator {
+	return func(in *privatepb.FetchRequest) {
+		in.Id = value
+	}
+}
+func SetDeleteRequest_Id(value string) DeleteRequestMutator {
+	return func(in *privatepb.DeleteRequest) {
+		in.Id = value
+	}
+}
+
 type Service struct {
 	Validator
 	privatepb.PeopleServer
