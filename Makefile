@@ -20,4 +20,4 @@ example: install
 
 .PHONY: test
 test: example
-	cd example && go build -o build/people-api ./cmd/people-api/...
+	cd example && go test ./... -run TestExample
