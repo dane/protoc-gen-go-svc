@@ -50,34 +50,3 @@ func serviceImportPath(service *Service) protogen.GoImportPath {
 	path := fmt.Sprintf("%s/service/%s", prefix, service.GoPackageName)
 	return protogen.GoImportPath(path)
 }
-
-/*
-package service
-
-import (
-	private "github.com/dane/protoc-gen-go-svc/example/proto/go/service/private"
-	v1 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v1"
-	v2 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2"
-)
-
-func RegisterServer(s *grpc.Server, impl privatepb.PeopleServer) {
-	privateSvc := &private.Service{
-		Validator: private.NewValidator(),
-		Impl:      impl,
-	}
-
-	v2Svc := &v2.Service{
-		Validator: v2.NewValidator(),
-		Private:   privateSvc,
-		Next:      privateSvc,
-	}
-	v2pb.RegisterPeopleServer(s, v2Svc)
-	v1Svc := &v1.Service{
-		Validator: v1.NewValidator(),
-		Private:   privateSvc,
-		Next:      v2Svc,
-	}
-	v1pb.RegisterPeopleServer(s, v1Svc)
-}
-
-*/
