@@ -9,8 +9,10 @@ import (
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
 	servicepb "github.com/dane/protoc-gen-go-svc/example/proto/go/service"
+	servicev2 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2"
 	publicpb "github.com/dane/protoc-gen-go-svc/example/proto/go/v2"
 	private "github.com/dane/protoc-gen-go-svc/example/service/private"
+	v2 "github.com/dane/protoc-gen-go-svc/example/service/v2"
 )
 
 func TestExample(t *testing.T) {
@@ -21,7 +23,8 @@ func TestExample(t *testing.T) {
 	defer server.Stop()
 
 	impl := &private.Service{Store: make(map[string]*privatepb.Person)}
-	servicepb.RegisterServer(server, impl)
+	option := v2.Converter{servicev2.NewConverter()}
+	servicepb.RegisterServer(server, impl, option)
 
 	go func(t *testing.T, server *grpc.Server, ln net.Listener) {
 		err := server.Serve(ln)
