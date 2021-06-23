@@ -5,11 +5,13 @@ import (
 )
 
 func generateValidators(file *protogen.GeneratedFile, pkgName string, service *Service) error {
+	file.P(`const ValidatorName = "`, service.Service.Desc.FullName(), `.Validator"`)
+
 	file.P("type Validator interface {")
+	file.P("Name() string")
 	for _, method := range service.Methods {
 		name := messageName(method.Input)
 		file.P("Validate", name, "(*", pkgName, ".", name, ") error")
-		//file.P("Validate", name, "(*", pkgName, ".", name, ") error")
 		messagesByImportPath[method.Input.GoIdent.GoImportPath][name].Validated = true
 	}
 
@@ -35,6 +37,7 @@ func generateValidators(file *protogen.GeneratedFile, pkgName string, service *S
 	file.P("func NewValidator() Validator { return validator{} }")
 
 	file.P("type validator struct {}")
+	file.P("func (v validator) Name() string { return ValidatorName }")
 
 	for _, method := range service.Methods {
 		if err := generateMessageValidator(file, pkgName, method.Input); err != nil {

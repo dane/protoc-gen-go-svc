@@ -8,10 +8,13 @@ import (
 )
 
 func generateLatestConverters(file *protogen.GeneratedFile, service, private *Service) error {
+	file.P(`const ConverterName = "`, service.Service.Desc.FullName(), `.Converter"`)
+
 	// Create Converter interface.
 	file.P("func NewConverter() Converter { return converter{} }")
 
 	file.P("type Converter interface {")
+	file.P("Name() string")
 	for _, method := range service.Methods {
 
 		delegateMethod, err := findMethodDelegate(method, private)
@@ -79,6 +82,8 @@ func generateLatestConverters(file *protogen.GeneratedFile, service, private *Se
 	}
 
 	// Create converter functions.
+	file.P("func (c converter) Name() string { return ConverterName }")
+
 	for _, method := range service.Methods {
 		delegateMethod, err := findMethodDelegate(method, private)
 		if err != nil {

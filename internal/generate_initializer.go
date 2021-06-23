@@ -21,24 +21,36 @@ func generateRegister(file *protogen.GeneratedFile, services []*Service, private
 	}
 	file.P(")")
 
-	file.P("func RegisterServer(s *grpc.Server, impl privatepb.", private.Service.GoName, "Server) {")
+	file.P("type Option interface {")
+	file.P("Name() string")
+	file.P("}")
+
+	file.P("func RegisterServer(s *grpc.Server, impl privatepb.", private.Service.GoName, "Server, options ...Option) {")
 	file.P("privateSvc := &private.Service{")
 	file.P("Validator: private.NewValidator(),")
 	file.P("Impl:      impl,")
 	file.P("}")
 
 	for i, service := range services {
-		file.P(service.GoPackageName, "Svc := &", service.GoPackageName, ".Service{")
+		varName := fmt.Sprintf("%sSvc", service.GoPackageName)
+		file.P(varName, " := &", service.GoPackageName, ".Service{")
 		file.P("Validator:", service.GoPackageName, ".NewValidator(),")
 		file.P("Converter:", service.GoPackageName, ".NewConverter(),")
 		file.P("Private: privateSvc,")
 		if i > 0 {
 			nextService := services[i-1]
-			file.P("Converter:", service.GoPackageName, ".NewConverter(),")
 			file.P("Next: ", nextService.GoPackageName, "Svc,")
 		}
 		file.P("}")
-		file.P(service.GoPackageName, "pb.Register", service.Service.GoName, "Server(s, ", service.GoPackageName, "Svc)")
+
+		file.P("for _, opt := range options {")
+		file.P("if ", service.GoPackageName, ".ConverterName == opt.Name() {")
+		file.P(varName, ".Converter = opt.(", service.GoPackageName, ".Converter)")
+		file.P("} else if ", service.GoPackageName, ".ValidatorName == opt.Name() {")
+		file.P(varName, ".Validator = opt.(", service.GoPackageName, ".Validator)")
+		file.P("}")
+		file.P("}")
+		file.P(service.GoPackageName, "pb.Register", service.Service.GoName, "Server(s, ", varName, ")")
 	}
 	file.P("}")
 

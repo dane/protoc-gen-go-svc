@@ -13,7 +13,10 @@ import (
 
 var _ = is.Int
 
+const ValidatorName = "example.v2.People.Validator"
+
 type Validator interface {
+	Name() string
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
@@ -23,6 +26,7 @@ func NewValidator() Validator { return validator{} }
 
 type validator struct{}
 
+func (v validator) Name() string { return ValidatorName }
 func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
@@ -49,9 +53,13 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	}
 	return nil
 }
+
+const ConverterName = "example.v2.People.Converter"
+
 func NewConverter() Converter { return converter{} }
 
 type Converter interface {
+	Name() string
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
 	ToPublicCreateResponse(*privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToPrivateFetchRequest(*publicpb.GetRequest) *privatepb.FetchRequest
@@ -65,6 +73,7 @@ type Converter interface {
 }
 type converter struct{}
 
+func (c converter) Name() string { return ConverterName }
 func (c converter) ToPrivateCreateRequest(in *publicpb.CreateRequest) *privatepb.CreateRequest {
 	var out privatepb.CreateRequest
 	out.FullName = in.FullName

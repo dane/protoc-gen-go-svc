@@ -11,7 +11,10 @@ import (
 
 var _ = is.Int
 
+const ValidatorName = "example.private.People.Validator"
+
 type Validator interface {
+	Name() string
 	ValidateCreateRequest(*privatepb.CreateRequest) error
 	ValidateFetchRequest(*privatepb.FetchRequest) error
 	ValidateDeleteRequest(*privatepb.DeleteRequest) error
@@ -24,6 +27,7 @@ func NewValidator() Validator { return validator{} }
 
 type validator struct{}
 
+func (v validator) Name() string { return ValidatorName }
 func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.FirstName,
