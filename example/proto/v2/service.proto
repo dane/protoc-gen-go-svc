@@ -12,6 +12,7 @@ service People {
   //gen:svc delegate name=Fetch
   rpc Get(GetRequest) returns (GetResponse);
   rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc Update(UpdateRequest) returns (UpdateResponse);
 }
 
 message Person {
@@ -58,3 +59,15 @@ message DeleteRequest {
 }
 
 message DeleteResponse {}
+
+message UpdateRequest {
+  //gen:svc validate required=true is=uuid
+  string id = 1;
+
+  //gen:svc validate required=true
+  Person person = 2;
+}
+
+message UpdateResponse {
+  Person person = 1;
+}

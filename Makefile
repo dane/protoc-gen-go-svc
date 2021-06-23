@@ -20,4 +20,4 @@ example: install
 
 .PHONY: test
 test: example
-	cd example && go test ./... -run TestExample
+	cd example && go test ./... -run TestExample -v

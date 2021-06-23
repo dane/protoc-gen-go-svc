@@ -20,6 +20,7 @@ type Validator interface {
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 }
 
 func NewValidator() Validator { return validator{} }
@@ -53,6 +54,21 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	}
 	return nil
 }
+func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+		validation.Field(&in.Person,
+			validation.Required,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 
 const ConverterName = "example.v2.People.Converter"
 
@@ -66,6 +82,8 @@ type Converter interface {
 	ToPublicGetResponse(*privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToPrivateDeleteRequest(*publicpb.DeleteRequest) *privatepb.DeleteRequest
 	ToPublicDeleteResponse(*privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
+	ToPrivateUpdateRequest(*publicpb.UpdateRequest) *privatepb.UpdateRequest
+	ToPublicUpdateResponse(*privatepb.UpdateResponse) (*publicpb.UpdateResponse, error)
 	ToPrivatePerson(*publicpb.Person) *privatepb.Person
 	ToPublicPerson(*privatepb.Person) (*publicpb.Person, error)
 	ToPrivatePerson_Employment(publicpb.Person_Employment) privatepb.Person_Employment
@@ -112,6 +130,21 @@ func (c converter) ToPrivateDeleteRequest(in *publicpb.DeleteRequest) *privatepb
 func (c converter) ToPublicDeleteResponse(in *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error) {
 	var out publicpb.DeleteResponse
 	var err error
+	return &out, err
+}
+func (c converter) ToPrivateUpdateRequest(in *publicpb.UpdateRequest) *privatepb.UpdateRequest {
+	var out privatepb.UpdateRequest
+	out.Id = in.Id
+	out.Person = c.ToPrivatePerson(in.Person)
+	return &out
+}
+func (c converter) ToPublicUpdateResponse(in *privatepb.UpdateResponse) (*publicpb.UpdateResponse, error) {
+	var out publicpb.UpdateResponse
+	var err error
+	out.Person, err = c.ToPublicPerson(in.Person)
+	if err != nil {
+		return nil, err
+	}
 	return &out, err
 }
 func (c converter) ToPrivatePerson(in *publicpb.Person) *privatepb.Person {
@@ -224,6 +257,25 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 		return nil, nil, err
 	}
 	out, err := s.ToPublicDeleteResponse(privOut)
+	if err != nil {
+		return nil, nil, err
+	}
+	return out, privOut, err
+}
+func (s *Service) Update(ctx context.Context, in *publicpb.UpdateRequest) (*publicpb.UpdateResponse, error) {
+	if err := s.ValidateUpdateRequest(in); err != nil {
+		return nil, err
+	}
+	out, _, err := s.UpdateImpl(ctx, in)
+	return out, err
+}
+func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mutators ...private.UpdateRequestMutator) (*publicpb.UpdateResponse, *privatepb.UpdateResponse, error) {
+	privIn := s.ToPrivateUpdateRequest(in)
+	privOut, err := s.Private.Update(ctx, privIn)
+	if err != nil {
+		return nil, nil, err
+	}
+	out, err := s.ToPublicUpdateResponse(privOut)
 	if err != nil {
 		return nil, nil, err
 	}

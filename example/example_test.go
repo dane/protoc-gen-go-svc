@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
 	servicepb "github.com/dane/protoc-gen-go-svc/example/proto/go/service"
@@ -36,7 +38,7 @@ func TestExample(t *testing.T) {
 	client := publicpb.NewPeopleClient(conn)
 
 	var personId string
-	t.Run("create person in v2", func(t *testing.T) {
+	t.Run("v2: create person", func(t *testing.T) {
 		resp, err := client.Create(context.Background(), &publicpb.CreateRequest{
 			FullName:   "Dane Harrigan",
 			Age:        35,
@@ -47,8 +49,21 @@ func TestExample(t *testing.T) {
 		personId = resp.Person.Id
 	})
 
-	t.Logf("personId: %s", personId)
+	t.Run("v2: update person failure", func(t *testing.T) {
+		_, err := client.Update(context.Background(), &publicpb.UpdateRequest{
+			Id:     personId,
+			Person: &publicpb.Person{},
+		})
 
+		if err == nil {
+			t.Fatal("expected error did not occur")
+		}
+
+		st := status.Convert(err)
+		if st.Code() != codes.InvalidArgument {
+			t.Fatalf("got %q; want %q", st.Code(), codes.InvalidArgument)
+		}
+	})
 }
 
 func fatalIf(t *testing.T, err error) {
