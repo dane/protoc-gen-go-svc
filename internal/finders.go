@@ -7,126 +7,107 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// findMethodDelegate finds the next method in the service chain.
-func findMethodDelegate(method *protogen.Method, next *Service) (*protogen.Method, error) {
-	targetName := method.GoName
-	delegateName, err := delegateAnnotation(method.Comments)
+func findNextMethod(method *protogen.Method, next *Service) (*protogen.Method, error) {
+	methodName := method.GoName
+	name, err := delegateMethodName(method)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find delegate method for %s: %w", methodName, err)
 	}
 
-	if delegateName != "" {
-		targetName = delegateName
+	if name == "" {
+		name = methodName
 	}
 
 	for _, method := range next.Methods {
-		if method.GoName == targetName {
+		if name == method.GoName {
 			return method, nil
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find delegate method %q in service package %q", targetName, next.GoPackageName)
+	return nil, fmt.Errorf("failed to find next method for %s", methodName)
 }
 
-// findMessageDelegate finds the next message in the service chain.
-func findMessageDelegate(message *Message, next *Service) (*Message, error) {
-	targetName := message.GoIdent.GoName
-	delegateName, err := delegateAnnotation(message.Comments)
+func findNextMessage(message *protogen.Message, next *Service) (*protogen.Message, error) {
+	messageName := message.GoIdent.GoName
+	name, err := delegateMessageName(message)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find delegate message for %s: %w", messageName, err)
 	}
 
-	if delegateName != "" {
-		targetName = delegateName
+	if name == "" {
+		name = messageName
 	}
 
-	if m, ok := messagesByImportPath[next.GoIdent.GoImportPath][targetName]; ok {
-		return m, nil
-	}
-
-	return nil, fmt.Errorf("failed to find delegate message %q in service package %q", targetName, next.GoPackageName)
-}
-
-// findFieldDelegate finds the next field in the message chain.
-func findFieldDelegate(field *protogen.Field, nextMessage *protogen.Message) (*protogen.Field, error) {
-	targetName := field.GoName
-	delegateName, err := delegateAnnotation(field.Comments)
-	if err != nil {
-		return nil, err
-	}
-
-	if delegateName != "" {
-		targetName = delegateName
-	}
-
-	for _, nextField := range nextMessage.Fields {
-		if nextField.GoName == targetName {
-			return nextField, nil
+	for _, message := range next.Messages {
+		if name == message.GoIdent.GoName {
+			return message, nil
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find delegate field %q in message %q", targetName, nextMessage.GoIdent.GoName)
+	return nil, fmt.Errorf("failed to find next message for %s", messageName)
 }
 
-// findEnumDelegate finds the next enum in the service chain.
-func findEnumDelegate(enum *Enum, next *Service) (*Enum, error) {
-	targetName := enum.GoIdent.GoName
-	delegateName, err := delegateAnnotation(enum.Comments)
+func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Field, error) {
+	fieldName := field.GoIdent.GoName
+	name, err := delegateFieldName(field)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find delegate field for %s: %w", fieldName, err)
 	}
 
-	if delegateName != "" {
-		targetName = delegateName
+	if name == "" {
+		name = fieldName
 	}
 
-	if e, ok := enumsByImportPath[next.GoIdent.GoImportPath][targetName]; ok {
-		return e, nil
-	}
-
-	return nil, fmt.Errorf("failed to find delegate enum %q in service package %q", targetName, next.GoPackageName)
-}
-
-// findEnumValueDelegate finds the next value in the enum chain.
-func findEnumValueDelegate(value *protogen.EnumValue, next *protogen.Enum) (*protogen.EnumValue, error) {
-	targetName := value.Desc.Name()
-	delegateName, err := delegateAnnotation(value.Comments)
-	if err != nil {
-		return nil, err
-	}
-
-	if delegateName != "" {
-		targetName = protoreflect.Name(delegateName)
-	}
-
-	for _, value := range next.Values {
-		if targetName == value.Desc.Name() {
-			return value, nil
+	for _, field := range next.Fields {
+		if name == field.GoIdent.GoName {
+			return field, nil
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find delegate enum value %q in enum %q", targetName, next.Desc.Name())
+	return nil, fmt.Errorf("failed to find next field for %s", fieldName)
 }
 
-// findEnumReceiveValues finds the next values in the enum chain that can
-// populate the current value.
-func findEnumReceiveValues(value *protogen.EnumValue, next *protogen.Enum) ([]*protogen.EnumValue, error) {
-	receiveNames, err := receiveAnnotations(value.Comments)
-	if err != nil {
-		return nil, err
+func findFieldType(packageName string, field *protogen.Field) (string, error) {
+	switch field.Desc.Kind() {
+	case protoreflect.StringKind:
+		return "string", nil
+	case protoreflect.BoolKind:
+		return "bool", nil
+	case protoreflect.Int64Kind:
+		return "in64", nil
+	case protoreflect.FloatKind:
+		return "float64", nil
+	case protoreflect.EnumKind:
+		enumName := field.Enum.GoIdent.GoName
+		return fmt.Sprintf("%s.%s", packageName, enumName), nil
+	case protoreflect.MessageKind:
+		messageName := field.Message.GoIdent.GoName
+		return fmt.Sprintf("*%s.%s", packageName, messageName), nil
 	}
 
-	var values []*protogen.EnumValue
-	for _, targetName := range receiveNames {
-		for _, value := range next.Values {
-			if protoreflect.Name(targetName) == value.Desc.Name() {
-				values = append(values, value)
-				continue
-			}
+	return "", fmt.Errorf("unexpected field %s for type lookup", field.GoName)
+}
 
-			return nil, fmt.Errorf("failed to find receive enum value %q in enum %q", targetName, next.Desc.Name())
+func findPrivateMethod(method *protogen.Method, chain []*Service) (*protogen.Method, error) {
+	targetMethod := method
+	var err error
+	for _, next := range chain {
+		targetMethod, err = findNextMethod(targetMethod, next)
+		if err != nil {
+			return nil, err
 		}
 	}
+	return targetMethod, nil
+}
 
-	return values, nil
+func findPrivateMessage(message *protogen.Message, chain []*Service) (*protogen.Message, error) {
+	targetMessage := message
+	var err error
+	for _, next := range chain {
+		targetMessage, err = findNextMessage(targetMessage, next)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetMessage, nil
 }
