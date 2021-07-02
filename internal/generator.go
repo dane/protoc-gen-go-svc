@@ -20,6 +20,7 @@ type Service struct {
 	GoName              string
 	GoServiceImportPath protogen.GoImportPath
 	Messages            []*protogen.Message
+	Enums               []*protogen.Enum
 }
 
 type ServiceType int
@@ -63,6 +64,7 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 	var services []*Service
 	var private *Service
 	messages := make(map[protogen.GoImportPath]map[string]*protogen.Message)
+	enums := make(map[protogen.GoImportPath]map[string]*protogen.Enum)
 
 	for _, file := range plugin.Files {
 		if !file.Generate {
@@ -100,16 +102,43 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 			}
 
 			messages[importPath][messageName] = message
+
+			// Group enums defined within messages by import path to set on each
+			// service.
+			for _, enum := range message.Enums {
+				enumName := enum.GoIdent.GoName
+				if _, ok := enums[importPath]; !ok {
+					enums[importPath] = make(map[string]*protogen.Enum)
+				}
+
+				enums[importPath][enumName] = enum
+			}
+		}
+
+		// Group enums by import path to set on each service.
+		for _, enum := range file.Enums {
+			importPath := enum.GoIdent.GoImportPath
+			enumName := enum.GoIdent.GoName
+			if _, ok := enums[importPath]; !ok {
+				enums[importPath] = make(map[string]*protogen.Enum)
+			}
+
+			enums[importPath][enumName] = enum
 		}
 	}
 
 	sort.Sort(byPackageName(services))
 	services = append(services, private)
 
-	// Set messages on service.
 	for _, service := range services {
+		// Set messages on service.
 		for _, message := range messages[service.GoImportPath] {
 			service.Messages = append(service.Messages, message)
+		}
+
+		// Set enums on service.
+		for _, enum := range enums[service.GoImportPath] {
+			service.Enums = append(service.Enums, enum)
 		}
 	}
 

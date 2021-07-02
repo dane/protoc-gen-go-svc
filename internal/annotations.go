@@ -12,6 +12,10 @@ func delegateMethodName(method *protogen.Method) (string, error) {
 	return delegate(method.Comments)
 }
 
+func delegateEnumName(enum *protogen.Enum) (string, error) {
+	return delegate(enum.Comments)
+}
+
 func delegateMessageName(message *protogen.Message) (string, error) {
 	return delegate(message.Comments)
 }

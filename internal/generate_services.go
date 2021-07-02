@@ -82,7 +82,9 @@ func generateLatestPublicService(file *protogen.GeneratedFile, service *Service,
 		return err
 	}
 
-	// TODO: generate converters
+	if err := generateConverters(file, service, chain, LatestPublicService); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -124,10 +126,11 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 		return err
 	}
 
+	if err := generateConverters(file, service, chain, PublicService); err != nil {
+		return err
+	}
+
 	generateServiceMethods(file, service, PublicService)
-	//if err := generatePublicServiceMethodImpls(file, service, private); err != nil {
-	//	return err
-	//}
 
 	for _, method := range service.Methods {
 		if deprecatedMethod(method) {
@@ -141,6 +144,180 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 			return err
 		}
 	}
+
+	return nil
+}
+
+func generateConverters(file *protogen.GeneratedFile, service *Service, chain []*Service, serviceType ServiceType) error {
+	next := chain[0]
+	private := chain[len(chain)-1]
+
+	file.P("type Converter interface {")
+	for _, method := range service.Methods {
+		publicIn := method.Input
+		publicOut := method.Output
+
+		if deprecatedMethod(method) || serviceType == LatestPublicService {
+			if err := generateConverterToPrivateIface(file, publicIn, publicOut, private); err != nil {
+				return err
+			}
+			continue
+		}
+
+		privateOut, err := findPrivateMessage(publicOut, chain)
+		if err != nil {
+			return err
+		}
+
+		nextIn, err := findNextMessage(publicIn, next)
+		if err != nil {
+			return err
+		}
+
+		nextOut, err := findNextMessage(publicOut, next)
+		if err != nil {
+			return err
+		}
+
+		publicInName := publicIn.GoIdent.GoName
+		publicOutName := publicOut.GoIdent.GoName
+		privateOutName := privateOut.GoIdent.GoName
+		nextInName := nextIn.GoIdent.GoName
+		nextOutName := nextOut.GoIdent.GoName
+
+		file.P("ToNext", nextInName, "(*publicpb.", publicInName, ") *nextpb.", nextInName)
+		file.P("ToPublic", publicOutName, "(*nextpb.", nextOutName, ", *privatepb.", privateOutName, ") (*publicpb.", publicOutName, ", error)")
+	}
+
+	for _, message := range service.Messages {
+		_, isInput := inputs[message]
+		_, isOutput := outputs[message]
+		if isInput || isOutput {
+			continue
+		}
+
+		if serviceType == LatestPublicService {
+			if err := generateConverterToPrivateIface(file, message, message, private); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := generateConverterToNextIface(file, message, chain); err != nil {
+			return err
+		}
+	}
+
+	for _, enum := range service.Enums {
+		if serviceType == LatestPublicService {
+			if err := generateConverterToPrivateIface(file, enum, enum, private); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := generateConverterToNextIface(file, enum, chain); err != nil {
+			return err
+		}
+	}
+	file.P("}")
+
+	return nil
+}
+
+func generateConverterToPrivateIface(file *protogen.GeneratedFile, publicIn, publicOut interface{}, private *Service) error {
+	var publicInName, publicOutName, privateOutName, privateInName, pointer string
+	switch publicIn.(type) {
+	case *protogen.Message:
+		value := publicIn.(*protogen.Message)
+		privateValue, err := findNextMessage(value, private)
+		if err != nil {
+			return err
+		}
+
+		publicInName = value.GoIdent.GoName
+		privateInName = privateValue.GoIdent.GoName
+		pointer = "*"
+	case *protogen.Enum:
+		value := publicIn.(*protogen.Enum)
+		privateValue, err := findNextEnum(value, private)
+		if err != nil {
+			return err
+		}
+
+		publicInName = value.GoIdent.GoName
+		privateInName = privateValue.GoIdent.GoName
+	}
+
+	switch publicOut.(type) {
+	case *protogen.Message:
+		value := publicOut.(*protogen.Message)
+		privateValue, err := findNextMessage(value, private)
+		if err != nil {
+			return err
+		}
+
+		publicOutName = value.GoIdent.GoName
+		privateOutName = privateValue.GoIdent.GoName
+		pointer = "*"
+	case *protogen.Enum:
+		value := publicOut.(*protogen.Enum)
+		privateValue, err := findNextEnum(value, private)
+		if err != nil {
+			return err
+		}
+
+		publicOutName = value.GoIdent.GoName
+		privateOutName = privateValue.GoIdent.GoName
+	}
+
+	file.P("ToPrivate", privateInName, "(", pointer, "publicpb.", publicInName, ") ", pointer, "privatepb.", privateInName)
+	file.P("ToPublic", publicOutName, "(", pointer, "privatepb.", privateOutName, ") (", pointer, "publicpb.", publicOutName, ", error)")
+
+	return nil
+}
+
+func generateConverterToNextIface(file *protogen.GeneratedFile, v interface{}, chain []*Service) error {
+	next := chain[0]
+	var publicName, privateName, nextName, pointer string
+	switch v.(type) {
+	case *protogen.Message:
+		value := v.(*protogen.Message)
+		privateMessage, err := findPrivateMessage(value, chain)
+		if err != nil {
+			return err
+		}
+
+		nextMessage, err := findNextMessage(value, next)
+		if err != nil {
+			return err
+		}
+
+		publicName = value.GoIdent.GoName
+		privateName = privateMessage.GoIdent.GoName
+		nextName = nextMessage.GoIdent.GoName
+		pointer = "*"
+	case *protogen.Enum:
+		value := v.(*protogen.Enum)
+		privateEnum, err := findPrivateEnum(value, chain)
+		if err != nil {
+			return err
+		}
+
+		nextEnum, err := findNextEnum(value, next)
+		if err != nil {
+			return err
+		}
+
+		publicName = value.GoIdent.GoName
+		privateName = privateEnum.GoIdent.GoName
+		nextName = nextEnum.GoIdent.GoName
+	default:
+		return fmt.Errorf("failed to generate converter interface for %T", v)
+	}
+
+	file.P("ToNext", nextName, "(", pointer, "publicpb.", publicName, ") ", pointer, "nextpb.", nextName)
+	file.P("ToPublic", publicName, "(", pointer, "nextpb.", nextName, ", ", pointer, "privatepb.", privateName, ") (", pointer, "publicpb.", publicName, ", error)")
 
 	return nil
 }

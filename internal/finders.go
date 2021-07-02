@@ -27,6 +27,26 @@ func findNextMethod(method *protogen.Method, next *Service) (*protogen.Method, e
 	return nil, fmt.Errorf("failed to find next method for %s", methodName)
 }
 
+func findNextEnum(enum *protogen.Enum, next *Service) (*protogen.Enum, error) {
+	enumName := enum.GoIdent.GoName
+	name, err := delegateEnumName(enum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find delegate enum for %s: %w", enumName, err)
+	}
+
+	if name == "" {
+		name = enumName
+	}
+
+	for _, enum := range next.Enums {
+		if name == enum.GoIdent.GoName {
+			return enum, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find next enum for %s", enumName)
+}
+
 func findNextMessage(message *protogen.Message, next *Service) (*protogen.Message, error) {
 	messageName := message.GoIdent.GoName
 	name, err := delegateMessageName(message)
@@ -110,4 +130,16 @@ func findPrivateMessage(message *protogen.Message, chain []*Service) (*protogen.
 		}
 	}
 	return targetMessage, nil
+}
+
+func findPrivateEnum(enum *protogen.Enum, chain []*Service) (*protogen.Enum, error) {
+	targetEnum := enum
+	var err error
+	for _, next := range chain {
+		targetEnum, err = findNextEnum(targetEnum, next)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetEnum, nil
 }
