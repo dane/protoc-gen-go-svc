@@ -31,14 +31,14 @@ type Service struct {
 	publicpb.PeopleServer
 }
 type Validator interface {
-	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateListRequest(*publicpb.ListRequest) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
+	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateListRequest(*publicpb.ListRequest) error
 }
 type validator struct{}
 
-func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -50,8 +50,13 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
-	err := validation.ValidateStruct(in)
+func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -73,18 +78,29 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
+func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
+
+type Converter interface {
+	ToNextCreateRequest(*publicpb.CreateRequest) *nextpb.CreateRequest
+	ToPublicCreateResponse(*nextpb.CreateResponse, *privatepb.CreateResponse) (*publicpb.CreateResponse, error)
+	ToNextGetRequest(*publicpb.GetRequest) *nextpb.GetRequest
+	ToPublicGetResponse(*nextpb.GetResponse, *privatepb.FetchResponse) (*publicpb.GetResponse, error)
+	ToNextDeleteRequest(*publicpb.DeleteRequest) *nextpb.DeleteRequest
+	ToPublicDeleteResponse(*nextpb.DeleteResponse, *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
+	ToPrivateListRequest(*publicpb.ListRequest) *privatepb.ListRequest
+	ToPublicListResponse(*privatepb.ListResponse) (*publicpb.ListResponse, error)
+	ToNextPerson(*publicpb.Person) *nextpb.Person
+	ToPublicPerson(*nextpb.Person, *privatepb.Person) (*publicpb.Person, error)
+	ToNextPerson_Employment(publicpb.Person_Employment) nextpb.Person_Employment
+	ToPublicPerson_Employment(nextpb.Person_Employment, privatepb.Person_Employment) (publicpb.Person_Employment, error)
+}
+
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
 		return nil, nil, err

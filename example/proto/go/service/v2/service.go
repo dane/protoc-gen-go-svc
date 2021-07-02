@@ -108,14 +108,33 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 }
 
 type Validator interface {
-	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateUpdateRequest(*publicpb.UpdateRequest) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
+	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 }
 type validator struct{}
 
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
@@ -138,22 +157,18 @@ func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
+
+type Converter interface {
+	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
+	ToPublicCreateResponse(*privatepb.CreateResponse) (*publicpb.CreateResponse, error)
+	ToPrivateFetchRequest(*publicpb.GetRequest) *privatepb.FetchRequest
+	ToPublicGetResponse(*privatepb.FetchResponse) (*publicpb.GetResponse, error)
+	ToPrivateDeleteRequest(*publicpb.DeleteRequest) *privatepb.DeleteRequest
+	ToPublicDeleteResponse(*privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
+	ToPrivateUpdateRequest(*publicpb.UpdateRequest) *privatepb.UpdateRequest
+	ToPublicUpdateResponse(*privatepb.UpdateResponse) (*publicpb.UpdateResponse, error)
+	ToPrivatePerson(*publicpb.Person) *privatepb.Person
+	ToPublicPerson(*privatepb.Person) (*publicpb.Person, error)
+	ToPrivatePerson_Employment(publicpb.Person_Employment) privatepb.Person_Employment
+	ToPublicPerson_Employment(privatepb.Person_Employment) (publicpb.Person_Employment, error)
 }
