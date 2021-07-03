@@ -25,9 +25,10 @@ type Person_Employment int32
 
 const (
 	Person_UNSET Person_Employment = 0
-	//gen:svc convert:out field=FULL_TIME
-	//gen:svc convert:in field=FULL_TIME
-	//gen:svc convert:in field=PART_TIME
+	//gen:svc delegate name=FULL_TIME
+	//gen:svc receive required=true
+	//gen:svc receive name=FULL_TIME
+	//gen:svc receive name=PART_TIME
 	Person_EMPLOYED   Person_Employment = 1
 	Person_UNEMPLOYED Person_Employment = 2
 )
