@@ -152,6 +152,7 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 	next := chain[0]
 	private := chain[len(chain)-1]
 
+	// Generate converter interface.
 	file.P("type Converter interface {")
 	for _, method := range service.Methods {
 		publicIn := method.Input
@@ -220,6 +221,366 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 			return err
 		}
 	}
+	file.P("}")
+
+	// Generate converter functions.
+	file.P("type converter struct {}")
+
+	for _, method := range service.Methods {
+		publicIn := method.Input
+		publicOut := method.Output
+
+		if deprecatedMethod(method) || serviceType == LatestPublicService {
+			if err := generateConverterToPrivateFunc(file, publicIn, private); err != nil {
+				return err
+			}
+
+			if err := generateConverterToPublicFromPrivateFunc(file, publicOut, private); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := generateConverterToNextFunc(file, publicIn, next); err != nil {
+			return err
+		}
+
+		if err := generateConverterToPublicFuncFromNext(file, publicOut, chain); err != nil {
+			return err
+		}
+	}
+
+	for _, message := range service.Messages {
+		_, isInput := inputs[message]
+		_, isOutput := outputs[message]
+		if isInput || isOutput {
+			continue
+		}
+
+		if serviceType == LatestPublicService {
+			if err := generateConverterToPrivateFunc(file, message, private); err != nil {
+				return err
+			}
+
+			if err := generateConverterToPublicFromPrivateFunc(file, message, private); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := generateConverterToNextFunc(file, message, next); err != nil {
+			return err
+		}
+
+		if err := generateConverterToPublicFuncFromNext(file, message, chain); err != nil {
+			return err
+		}
+	}
+
+	for _, enum := range service.Enums {
+		if serviceType == LatestPublicService {
+			if err := generateConverterToPrivateEnum(file, enum, private); err != nil {
+				return err
+			}
+
+			if err := generateConverterToPublicEnum(file, enum, "privatepb", private); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := generateConverterToNextEnum(file, enum, next); err != nil {
+			return err
+		}
+
+		if err := generateConverterToPublicEnum(file, enum, "nextpb", next); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func generateConverterToNextEnum(file *protogen.GeneratedFile, enum *protogen.Enum, next *Service) error {
+	return generateConverterToDstEnum(file, enum, "Next", "publicpb", "nextpb", next)
+}
+
+func generateConverterToPrivateEnum(file *protogen.GeneratedFile, enum *protogen.Enum, private *Service) error {
+	return generateConverterToDstEnum(file, enum, "Private", "publicpb", "privatepb", private)
+}
+
+func generateConverterToPublicEnum(file *protogen.GeneratedFile, enum *protogen.Enum, nextPackageName string, next *Service) error {
+	nextEnum, err := findNextEnum(enum, next)
+	if err != nil {
+		return err
+	}
+
+	inEnumName := enum.GoIdent.GoName
+	nextEnumName := nextEnum.GoIdent.GoName
+
+	file.P("func (c converter) ToPublic", inEnumName, "(in ", nextPackageName, ".", nextEnumName, ") (publicpb.", inEnumName, ", error) {")
+	file.P("switch in {")
+	for _, value := range enum.Values {
+		receiveValues, err := findReceiveEnumValues(value, nextEnum)
+		if err != nil {
+			return err
+		}
+
+		nextEnumValue, err := findNextEnumValue(value, nextEnum)
+		if err != nil {
+			return err
+		}
+
+		receiveValues = append(receiveValues, nextEnumValue)
+		valueName := value.Desc.Name()
+
+		for _, receiveValue := range receiveValues {
+			receiveValueName := receiveValue.Desc.Name()
+			file.P("case ", nextPackageName, ".", receiveValueName, ":")
+			file.P("return publicpb.", valueName)
+		}
+	}
+	file.P("}")
+
+	defaultValue := enum.Values[0].GoIdent.GoName
+	file.P("return publicpb.", defaultValue, `,status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)`)
+	file.P("}")
+
+	return nil
+}
+
+func generateConverterToDstEnum(file *protogen.GeneratedFile, enum *protogen.Enum, dst, inPackageName, nextPackageName string, next *Service) error {
+	nextEnum, err := findNextEnum(enum, next)
+	if err != nil {
+		return err
+	}
+
+	inEnumName := enum.GoIdent.GoName
+	nextEnumName := nextEnum.GoIdent.GoName
+
+	file.P("func (c converter) To", dst, nextEnumName, "(in ", inPackageName, ".", inEnumName, ") ", nextPackageName, ".", nextEnumName, "{")
+	file.P("switch in {")
+	for _, value := range enum.Values {
+		nextEnumValue, err := findNextEnumValue(value, nextEnum)
+		if err != nil {
+			return err
+		}
+
+		valueName := value.GoIdent.GoName
+		nextValueName := nextEnumValue.GoIdent.GoName
+
+		file.P("case ", inPackageName, ".", valueName, ":")
+		file.P("return ", nextPackageName, ".", nextValueName)
+	}
+	file.P("}")
+	defaultNextValue := nextEnum.Values[0].GoIdent.GoName
+	file.P("return ", nextPackageName, ".", defaultNextValue)
+	file.P("}")
+
+	return nil
+}
+
+func generateConverterToPrivateFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, private *Service) error {
+	return generateConverterInputFunc(file, "Private", "privatepb", publicIn, private)
+}
+
+func generateConverterToNextFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, next *Service) error {
+	return generateConverterInputFunc(file, "Next", "nextpb", publicIn, next)
+}
+
+func generateConverterInputFunc(file *protogen.GeneratedFile, dst, packageName string, publicIn *protogen.Message, next *Service) error {
+	nextIn, err := findNextMessage(publicIn, next)
+	if err != nil {
+		return err
+	}
+
+	publicInName := publicIn.GoIdent.GoName
+	nextInName := nextIn.GoIdent.GoName
+
+	file.P("func (c converter) To", dst, nextInName, "(in *publicpb.", publicInName, ") *", packageName, ".", nextInName, " {")
+	file.P("var out ", packageName, ".", nextInName)
+	for _, field := range publicIn.Fields {
+		if deprecatedField(field) {
+			continue
+		}
+
+		nextField, err := findNextField(field, nextIn)
+		if err != nil {
+			return fmt.Errorf("failed to generate converter function for %s: %w", publicInName, err)
+		}
+
+		publicFieldName := field.GoName
+		nextFieldName := nextField.GoName
+
+		if fieldMatch(field, nextField) {
+			file.P("out.", nextFieldName, "= in.", publicFieldName)
+		} else if nextField.Message != nil || nextField.Enum != nil {
+			var name string
+			if nextField.Message != nil {
+				name = nextField.Message.GoIdent.GoName
+			} else {
+				name = nextField.Enum.GoIdent.GoName
+			}
+			file.P("out.", nextFieldName, "= c.To", dst, name, "(in.", publicFieldName, ")")
+		}
+	}
+	file.P("return &out")
+	file.P("}")
+
+	return nil
+}
+
+func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, private *Service) error {
+	privateIn, err := findNextMessage(publicIn, private)
+	if err != nil {
+		return err
+	}
+
+	publicInName := publicIn.GoIdent.GoName
+	privateInName := privateIn.GoIdent.GoName
+
+	file.P("func (c converter) ToPublic", publicInName, "(in *privatepb.", privateInName, ") (*publicpb.", publicInName, ", error) {")
+	file.P("var required validation.Errors")
+	for _, field := range publicIn.Fields {
+		if receiveRequired(field) {
+			privateField, err := findNextField(field, privateIn)
+			if err != nil {
+				return fmt.Errorf("failed to generate converter function for %s: %w", publicInName, err)
+			}
+
+			privateFieldName := privateField.GoName
+			file.P(`required["`, privateFieldName, `"] = validation.Validate(in.`, privateFieldName, `, validation.Required)`)
+		}
+	}
+
+	file.P("if err := required.Filter(); err != nil { return nil, err }")
+	file.P("var out publicpb.", publicInName)
+	file.P("var err error")
+
+	for _, field := range publicIn.Fields {
+		if err := generateConverterFieldToPublicFromPrivate(file, field, privateIn); err != nil {
+			return err
+		}
+	}
+	file.P("return &out, err")
+	file.P("}")
+
+	return nil
+}
+
+func generateConverterFieldToPublicFromPrivate(file *protogen.GeneratedFile, field *protogen.Field, privateIn *protogen.Message) error {
+	publicFieldName := field.GoName
+	privateField, err := findNextField(field, privateIn)
+	if err != nil {
+		return fmt.Errorf("failed to generate converter field for %s: %w", publicFieldName, err)
+	}
+
+	privateFieldName := privateField.GoName
+
+	if fieldMatch(field, privateField) {
+		file.P("out.", publicFieldName, "= in.", privateFieldName)
+	} else if field.Message != nil || field.Enum != nil {
+		var name string
+		if field.Message != nil {
+			name = field.Message.GoIdent.GoName
+		} else {
+			name = field.Enum.GoIdent.GoName
+		}
+		file.P("out.", publicFieldName, ", err = c.ToPublic", name, "(in.", privateFieldName, ")")
+		file.P("if err != nil { return nil, err }")
+	}
+
+	return nil
+}
+
+func generateConverterFieldToPublicFromNext(file *protogen.GeneratedFile, field *protogen.Field, publicIn *protogen.Message, chain []*Service) error {
+	next := chain[0]
+
+	nextIn, err := findNextMessage(publicIn, next)
+	if err != nil {
+		return err
+	}
+
+	nextField, err := findNextField(field, nextIn)
+	if err != nil {
+		return err
+	}
+
+	publicFieldName := field.GoName
+	nextFieldName := nextField.GoName
+
+	if fieldMatch(field, nextField) {
+		file.P("out.", publicFieldName, "= in.", nextFieldName)
+	} else if field.Message != nil || field.Enum != nil {
+		var name string
+		if field.Message != nil {
+			name = field.Message.GoIdent.GoName
+		} else {
+			name = field.Enum.GoIdent.GoName
+		}
+
+		privateField, err := findPrivateField(field, publicIn, chain)
+		if err != nil {
+			return err
+		}
+
+		privateFieldName := privateField.GoName
+
+		file.P("out.", publicFieldName, ", err = c.ToPublic", name, "(nextIn.", nextFieldName, ", privateIn.", privateFieldName, ")")
+		file.P("if err != nil { return nil, err }")
+	}
+
+	return nil
+}
+
+func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicIn *protogen.Message, chain []*Service) error {
+	next := chain[0]
+
+	nextIn, err := findNextMessage(publicIn, next)
+	if err != nil {
+		return err
+	}
+
+	privateIn, err := findPrivateMessage(publicIn, chain)
+	if err != nil {
+		return err
+	}
+
+	publicInName := publicIn.GoIdent.GoName
+	privateInName := privateIn.GoIdent.GoName
+	nextInName := nextIn.GoIdent.GoName
+
+	file.P("func (c converter) ToPublic", publicInName, "(nextIn *nextpb.", nextInName, ", privateIn *privatepb.", privateInName, ") (*publicpb.", publicInName, ", error) {")
+	file.P("var required validation.Errors")
+	for _, field := range publicIn.Fields {
+		if receiveRequired(field) {
+			privateField, err := findPrivateField(field, publicIn, chain)
+			if err != nil {
+				return fmt.Errorf("failed to generate converter function for %s: %w", publicInName, err)
+			}
+
+			privateFieldName := privateField.GoName
+			file.P(`required["`, privateFieldName, `"] = validation.Validate(in.`, privateFieldName, `, validation.Required)`)
+		}
+	}
+
+	file.P("if err := required.Filter(); err != nil { return nil, err }")
+	file.P("var out publicpb.", publicInName)
+	file.P("var err error")
+
+	for _, field := range publicIn.Fields {
+		if deprecatedField(field) {
+			if err := generateConverterFieldToPublicFromPrivate(file, field, privateIn); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := generateConverterFieldToPublicFromNext(file, field, publicIn, chain); err != nil {
+			return err
+		}
+	}
+	file.P("return &out, err")
 	file.P("}")
 
 	return nil
@@ -599,4 +960,20 @@ func generateMutators(file *protogen.GeneratedFile, service *Service) error {
 	}
 
 	return nil
+}
+
+func fieldMatch(a, b *protogen.Field) bool {
+	if a.Desc.Kind() != b.Desc.Kind() {
+		return false
+	}
+
+	if a.Desc.Kind() == protoreflect.MessageKind {
+		return a.Message.Desc.FullName() == b.Message.Desc.FullName()
+	}
+
+	if a.Desc.Kind() == protoreflect.EnumKind {
+		return a.Enum.Desc.FullName() == b.Enum.Desc.FullName()
+	}
+
+	return true
 }

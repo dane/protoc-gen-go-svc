@@ -47,6 +47,45 @@ func findNextEnum(enum *protogen.Enum, next *Service) (*protogen.Enum, error) {
 	return nil, fmt.Errorf("failed to find next enum for %s", enumName)
 }
 
+func findNextEnumValue(value *protogen.EnumValue, nextEnum *protogen.Enum) (*protogen.EnumValue, error) {
+	enumValueName := string(value.Desc.Name())
+	name, err := delegateEnumValueName(value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find delegate enum value for %s: %w", enumValueName, err)
+	}
+
+	if name == "" {
+		name = enumValueName
+	}
+
+	for _, nextValue := range nextEnum.Values {
+		if name == string(nextValue.Desc.Name()) {
+			return nextValue, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find next enum value for %s", enumValueName)
+}
+
+func findReceiveEnumValues(value *protogen.EnumValue, nextEnum *protogen.Enum) ([]*protogen.EnumValue, error) {
+	var values []*protogen.EnumValue
+	nextEnumName := nextEnum.GoIdent.GoName
+	for _, name := range receiveEnumValueNames(value) {
+		var matched bool
+		for _, nextValue := range nextEnum.Values {
+			if name == string(nextValue.Desc.Name()) {
+				values = append(values, nextValue)
+				matched = true
+			}
+		}
+		if !matched {
+			return nil, fmt.Errorf("failed to find %s in enum %s", name, nextEnumName)
+		}
+	}
+
+	return values, nil
+}
+
 func findNextMessage(message *protogen.Message, next *Service) (*protogen.Message, error) {
 	messageName := message.GoIdent.GoName
 	name, err := delegateMessageName(message)
@@ -68,7 +107,7 @@ func findNextMessage(message *protogen.Message, next *Service) (*protogen.Messag
 }
 
 func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Field, error) {
-	fieldName := field.GoIdent.GoName
+	fieldName := field.GoName
 	name, err := delegateFieldName(field)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find delegate field for %s: %w", fieldName, err)
@@ -79,7 +118,7 @@ func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Fie
 	}
 
 	for _, field := range next.Fields {
-		if name == field.GoIdent.GoName {
+		if name == field.GoName {
 			return field, nil
 		}
 	}
@@ -142,4 +181,23 @@ func findPrivateEnum(enum *protogen.Enum, chain []*Service) (*protogen.Enum, err
 		}
 	}
 	return targetEnum, nil
+}
+
+func findPrivateField(field *protogen.Field, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
+	targetMessage := message
+	targetField := field
+
+	var err error
+	for _, next := range chain {
+		targetMessage, err = findNextMessage(targetMessage, next)
+		if err != nil {
+			return nil, err
+		}
+
+		targetField, err = findNextField(targetField, targetMessage)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetField, nil
 }

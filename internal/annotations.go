@@ -16,6 +16,10 @@ func delegateEnumName(enum *protogen.Enum) (string, error) {
 	return delegate(enum.Comments)
 }
 
+func delegateEnumValueName(value *protogen.EnumValue) (string, error) {
+	return delegate(value.Comments)
+}
+
 func delegateMessageName(message *protogen.Message) (string, error) {
 	return delegate(message.Comments)
 }
@@ -48,6 +52,29 @@ func validateMessage(message *protogen.Message) bool {
 
 func validateField(field *protogen.Field) bool {
 	return validate(field.Comments)
+}
+
+func receiveRequired(field *protogen.Field) bool {
+	return receive(field.Comments)["required"] == "true"
+}
+
+func receiveEnumValueNames(value *protogen.EnumValue) []string {
+	prefix := fmt.Sprintf("%s %s ", GenSvc, "receive")
+	var values []string
+
+	for _, comment := range comments(value.Comments, fmt.Sprintf("%s ", "receive")) {
+		comment = strings.TrimPrefix(comment, prefix)
+		comment = strings.Trim(comment, " ")
+		rules := strings.Split(comment, " ")
+		for _, rule := range rules {
+			kv := strings.SplitN(rule, "=", 2)
+			if kv[0] == "name" {
+				values = append(values, kv[1])
+			}
+		}
+	}
+
+	return values
 }
 
 func required(field *protogen.Field) bool {
@@ -191,10 +218,18 @@ func validate(commentSet protogen.CommentSet) bool {
 	return len(comments(commentSet, "validate ")) > 0
 }
 
+func receive(commentSet protogen.CommentSet) map[string]string {
+	return kvs(commentSet, "receive")
+}
+
 func validations(commentSet protogen.CommentSet) map[string]string {
-	prefix := fmt.Sprintf("%s validate ", GenSvc)
+	return kvs(commentSet, "validate")
+}
+
+func kvs(commentSet protogen.CommentSet, name string) map[string]string {
+	prefix := fmt.Sprintf("%s %s ", GenSvc, name)
 	values := make(map[string]string)
-	for _, comment := range comments(commentSet, "validate ") {
+	for _, comment := range comments(commentSet, fmt.Sprintf("%s ", name)) {
 		comment = strings.TrimPrefix(comment, prefix)
 		comment = strings.Trim(comment, " ")
 		rules := strings.Split(comment, " ")
