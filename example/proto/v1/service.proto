@@ -27,9 +27,10 @@ message Person {
 
   enum Employment {
     UNSET = 0;
-    //gen:svc convert:out field=FULL_TIME
-    //gen:svc convert:in field=FULL_TIME
-    //gen:svc convert:in field=PART_TIME
+    //gen:svc delegate name=FULL_TIME
+    //gen:svc receive required=true
+    //gen:svc receive name=FULL_TIME
+    //gen:svc receive name=PART_TIME
     EMPLOYED = 1;
     UNEMPLOYED = 2;
   }
