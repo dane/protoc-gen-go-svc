@@ -166,5 +166,11 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 		}
 	}
 
+	fileName := filepath.Join(ServiceDir, ServiceFileName)
+	file := plugin.NewGeneratedFile(fileName, "")
+	if err := generateServiceRegister(file, services); err != nil {
+		return err
+	}
+
 	return nil
 }

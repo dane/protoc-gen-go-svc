@@ -2,11 +2,60 @@ package internal
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) error {
+	private := chain[len(chain)-1]
+	services := chain[:len(chain)-1]
+	imports := []protogen.GoIdent{
+		protogen.GoImportPath("google.golang.org/grpc").Ident("grpc"),
+		protogen.GoImportPath("context").Ident("context"),
+	}
+
+	for _, service := range chain {
+		packageName := string(service.GoPackageName)
+		path := service.GoImportPath.Ident(fmt.Sprintf("%spb", packageName))
+		imports = append(imports, path)
+		imports = append(imports, service.GoServiceImportPath.Ident(packageName))
+	}
+
+	file.P("package service")
+	file.P("import (")
+	for _, ident := range imports {
+		file.P(ident.GoName, ident.GoImportPath)
+	}
+	file.P(")")
+
+	file.P("func RegisterServer(server *grpc.Server, impl privatepb.", private.GoName, "Server) {")
+	file.P("servicePrivate := &", private.GoPackageName, ".Service{")
+	file.P("Validator: ", private.GoPackageName, ".NewValidator(),")
+	file.P("Impl: impl,")
+	file.P("}")
+
+	sort.Sort(sort.Reverse(byPackageName(services)))
+	for i, service := range services {
+		packageName := service.GoPackageName
+		varName := fmt.Sprintf("service%s", packageName)
+		file.P(varName, ":= &", packageName, ".Service{")
+		file.P("Validator: ", packageName, ".NewValidator(),")
+		file.P("Converter: ", packageName, ".NewConverter(),")
+		file.P("Private: servicePrivate,")
+		if i > 0 {
+			nextVarName := fmt.Sprintf("service%s", services[i-1].GoPackageName)
+			file.P("Next: ", nextVarName, ",")
+		}
+		file.P("}")
+	}
+
+	file.P("}")
+
+	return nil
+}
 
 func generatePrivateService(file *protogen.GeneratedFile, service *Service) error {
 	imports := commonImports(
