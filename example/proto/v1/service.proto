@@ -28,7 +28,6 @@ message Person {
   enum Employment {
     UNSET = 0;
     //gen:svc delegate name=FULL_TIME
-    //gen:svc receive required=true
     //gen:svc receive name=FULL_TIME
     //gen:svc receive name=PART_TIME
     EMPLOYED = 1;
@@ -36,7 +35,6 @@ message Person {
   }
 }
 
-//gen:svc convert:out custom
 message CreateRequest {
   //gen:svc deprecated
   //gen:svc validate required=true min=2

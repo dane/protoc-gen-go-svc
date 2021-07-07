@@ -26,7 +26,6 @@ type Person_Employment int32
 const (
 	Person_UNSET Person_Employment = 0
 	//gen:svc delegate name=FULL_TIME
-	//gen:svc receive required=true
 	//gen:svc receive name=FULL_TIME
 	//gen:svc receive name=PART_TIME
 	Person_EMPLOYED   Person_Employment = 1
@@ -163,7 +162,6 @@ func (x *Person) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-//gen:svc convert:out custom
 type CreateRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -108,13 +108,32 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 }
 
 type Validator interface {
-	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
+	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 }
 type validator struct{}
 
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
@@ -131,25 +150,6 @@ func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 		validation.Field(&in.Person,
 			validation.Required,
 			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
 		),
 	)
 	if err != nil {

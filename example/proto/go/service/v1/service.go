@@ -31,13 +31,25 @@ type Service struct {
 	publicpb.PeopleServer
 }
 type Validator interface {
-	ValidateGetRequest(*publicpb.GetRequest) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateListRequest(*publicpb.ListRequest) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
 }
 type validator struct{}
 
+func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -45,6 +57,13 @@ func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 			is.UUID,
 		),
 	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -61,25 +80,6 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 			validation.Length(2, 0),
 		),
 	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
-	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
