@@ -86,10 +86,6 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 		return err
 	}
 
-	if err := generateServiceValidators(file, "privatepb", service); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -200,6 +196,8 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 func generateConverters(file *protogen.GeneratedFile, service *Service, chain []*Service, serviceType ServiceType) error {
 	next := chain[0]
 	private := chain[len(chain)-1]
+
+	file.P(`const ConverterName = "`, service.Desc.FullName(), `.Converter"`)
 
 	// Generate converter interface.
 	file.P("type Converter interface {")
@@ -876,6 +874,7 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 }
 
 func generateServiceValidators(file *protogen.GeneratedFile, packageName string, service *Service) error {
+	file.P(`const ValidatorName = "`, service.Desc.FullName(), `.Validator"`)
 	file.P("type Validator interface {")
 	for _, message := range service.Messages {
 		if !validateMessage(message) {
