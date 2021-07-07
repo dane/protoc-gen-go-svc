@@ -1,14 +1,14 @@
 package service
 
 import (
+	grpc "google.golang.org/grpc"
 	context "context"
+	v1pb "github.com/dane/protoc-gen-go-svc/example/proto/go/v1"
+	v1 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v1"
+	v2pb "github.com/dane/protoc-gen-go-svc/example/proto/go/v2"
+	v2 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2"
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
 	private "github.com/dane/protoc-gen-go-svc/example/proto/go/service/private"
-	v1 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v1"
-	v2 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2"
-	v1pb "github.com/dane/protoc-gen-go-svc/example/proto/go/v1"
-	v2pb "github.com/dane/protoc-gen-go-svc/example/proto/go/v2"
-	grpc "google.golang.org/grpc"
 )
 
 func RegisterServer(server *grpc.Server, impl privatepb.PeopleServer) {

@@ -107,14 +107,32 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 	return out, privateOut, nil
 }
 
+const ValidatorName = "example.v2.People.Validator"
+
 type Validator interface {
+	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 }
 type validator struct{}
 
+func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+		validation.Field(&in.Person,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
@@ -141,22 +159,8 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-		validation.Field(&in.Person,
-			validation.Required,
-			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
+
+const ConverterName = "example.v2.People.Converter"
 
 type Converter interface {
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest

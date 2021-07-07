@@ -51,42 +51,18 @@ func (s *Service) Update(ctx context.Context, in *privatepb.UpdateRequest) (*pri
 	return s.Impl.Update(ctx, in)
 }
 
+const ValidatorName = "example.private.People.Validator"
+
 type Validator interface {
-	ValidateCreateRequest(*privatepb.CreateRequest) error
 	ValidateUpdateRequest(*privatepb.UpdateRequest) error
 	ValidateDeleteRequest(*privatepb.DeleteRequest) error
 	ValidateListRequest(*privatepb.ListRequest) error
 	ValidatePerson(*privatepb.Person) error
+	ValidateCreateRequest(*privatepb.CreateRequest) error
 	ValidateFetchRequest(*privatepb.FetchRequest) error
 }
 type validator struct{}
 
-func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.FirstName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.LastName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.FullName,
-			validation.Required,
-			validation.Length(5, 0),
-		),
-		validation.Field(&in.Age,
-			validation.Required,
-			validation.Min(16),
-		),
-		validation.Field(&in.Employment,
-			validation.Required,
-			validation.In(privatepb.Person_FULL_TIME, privatepb.Person_PART_TIME, privatepb.Person_UNEMPLOYED),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -132,6 +108,32 @@ func (v validator) ValidatePerson(in *privatepb.Person) error {
 		validation.Field(&in.Age,
 			validation.Required,
 			validation.Min(16),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FirstName,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.LastName,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.FullName,
+			validation.Required,
+			validation.Length(5, 0),
+		),
+		validation.Field(&in.Age,
+			validation.Required,
+			validation.Min(16),
+		),
+		validation.Field(&in.Employment,
+			validation.Required,
+			validation.In(privatepb.Person_FULL_TIME, privatepb.Person_PART_TIME, privatepb.Person_UNEMPLOYED),
 		),
 	)
 	if err != nil {
@@ -230,100 +232,4 @@ func ApplyUpdateRequestMutators(in *privatepb.UpdateRequest, mutators []UpdateRe
 	for _, mutator := range mutators {
 		mutator(in)
 	}
-}
-
-type Validator interface {
-	ValidateCreateRequest(*privatepb.CreateRequest) error
-	ValidateUpdateRequest(*privatepb.UpdateRequest) error
-	ValidateDeleteRequest(*privatepb.DeleteRequest) error
-	ValidateListRequest(*privatepb.ListRequest) error
-	ValidatePerson(*privatepb.Person) error
-	ValidateFetchRequest(*privatepb.FetchRequest) error
-}
-type validator struct{}
-
-func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.FirstName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.LastName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.FullName,
-			validation.Required,
-			validation.Length(5, 0),
-		),
-		validation.Field(&in.Age,
-			validation.Required,
-			validation.Min(16),
-		),
-		validation.Field(&in.Employment,
-			validation.Required,
-			validation.In(privatepb.Person_FULL_TIME, privatepb.Person_PART_TIME, privatepb.Person_UNEMPLOYED),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-		validation.Field(&in.Person,
-			validation.Required,
-			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidatePerson(in *privatepb.Person) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.FirstName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.LastName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.FullName,
-			validation.Required,
-			validation.Length(5, 0),
-		),
-		validation.Field(&in.Age,
-			validation.Required,
-			validation.Min(16),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateFetchRequest(in *privatepb.FetchRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
 }

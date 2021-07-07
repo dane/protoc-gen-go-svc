@@ -30,26 +30,17 @@ type Service struct {
 	Next      *nextpb.Service
 	publicpb.PeopleServer
 }
+
+const ValidatorName = "example.v1.People.Validator"
+
 type Validator interface {
-	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
-	ValidateListRequest(*publicpb.ListRequest) error
+	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateListRequest(*publicpb.ListRequest) error
 }
 type validator struct{}
 
-func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -62,8 +53,13 @@ func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
-	err := validation.ValidateStruct(in)
+func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -85,6 +81,15 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	}
 	return nil
 }
+func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+
+const ConverterName = "example.v1.People.Converter"
 
 type Converter interface {
 	ToNextCreateRequest(*publicpb.CreateRequest) *nextpb.CreateRequest
