@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"sort"
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -133,7 +134,7 @@ func findFieldType(packageName string, field *protogen.Field) (string, error) {
 	case protoreflect.BoolKind:
 		return "bool", nil
 	case protoreflect.Int64Kind:
-		return "in64", nil
+		return "int64", nil
 	case protoreflect.FloatKind:
 		return "float64", nil
 	case protoreflect.EnumKind:
@@ -183,6 +184,50 @@ func findPrivateEnum(enum *protogen.Enum, chain []*Service) (*protogen.Enum, err
 	return targetEnum, nil
 }
 
+func findPrivateEnumValue(value *protogen.EnumValue, enum *protogen.Enum, chain []*Service) (*protogen.EnumValue, error) {
+	targetValue := value
+	targetEnum := enum
+	var err error
+
+	for _, next := range chain {
+		targetEnum, err = findNextEnum(targetEnum, next)
+		if err != nil {
+			return nil, err
+		}
+
+		targetValue, err = findNextEnumValue(targetValue, targetEnum)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return targetValue, nil
+}
+
+func findPrivateReceiveEnumValues(value *protogen.EnumValue, enum *protogen.Enum, chain []*Service) ([]*protogen.EnumValue, error) {
+	privateEnum, err := findPrivateEnum(enum, chain)
+	if err != nil {
+		return nil, err
+	}
+
+	var values []*protogen.EnumValue
+	privateEnumName := privateEnum.GoIdent.GoName
+	for _, name := range receiveEnumValueNames(value) {
+		var matched bool
+		for _, privateValue := range privateEnum.Values {
+			if name == string(privateValue.Desc.Name()) {
+				values = append(values, privateValue)
+				matched = true
+			}
+		}
+		if !matched {
+			return nil, fmt.Errorf("failed to find %s in enum %s", name, privateEnumName)
+		}
+	}
+
+	return values, nil
+}
+
 func findPrivateField(field *protogen.Field, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
 	targetMessage := message
 	targetField := field
@@ -200,4 +245,104 @@ func findPrivateField(field *protogen.Field, message *protogen.Message, chain []
 		}
 	}
 	return targetField, nil
+}
+
+func newDeprecatedFinder(message *protogen.Message) deprecatedFinder {
+	finder := deprecatedFinder{
+		message:      message,
+		goImportPath: message.GoIdent.GoImportPath,
+		messages:     make(map[*protogen.Message]struct{}),
+		enums:        make(map[*protogen.Enum]struct{}),
+	}
+
+	finder.build(message)
+	return finder
+}
+
+type deprecatedFinder struct {
+	message      *protogen.Message
+	goImportPath protogen.GoImportPath
+	messages     map[*protogen.Message]struct{}
+	enums        map[*protogen.Enum]struct{}
+}
+
+func (d deprecatedFinder) Messages() []*protogen.Message {
+	return d.sortedMessages()
+}
+
+func (d deprecatedFinder) Enums() []*protogen.Enum {
+	return d.sortedEnums()
+}
+
+func (d deprecatedFinder) build(message *protogen.Message) {
+	for _, field := range message.Fields {
+		if field.Enum != nil {
+			if _, ok := d.enums[field.Enum]; !ok {
+				d.enums[field.Enum] = struct{}{}
+			}
+		}
+
+		if field.Message == nil {
+			continue
+		}
+
+		if field.Message.GoIdent.GoImportPath != d.goImportPath {
+			continue
+		}
+
+		if _, ok := d.messages[field.Message]; ok {
+			continue
+		}
+
+		d.messages[field.Message] = struct{}{}
+		d.build(field.Message)
+	}
+}
+
+func (d deprecatedFinder) sortedMessages() []*protogen.Message {
+	var messages []*protogen.Message
+	for message, _ := range d.messages {
+		messages = append(messages, message)
+	}
+
+	sort.Sort(byMessageName(messages))
+	return messages
+}
+
+func (d deprecatedFinder) sortedEnums() []*protogen.Enum {
+	var enums []*protogen.Enum
+	for enum, _ := range d.enums {
+		enums = append(enums, enum)
+	}
+
+	sort.Sort(byEnumName(enums))
+	return enums
+}
+
+type byMessageName []*protogen.Message
+
+func (s byMessageName) Len() int {
+	return len(s)
+}
+
+func (s byMessageName) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s byMessageName) Less(i, j int) bool {
+	return s[i].GoIdent.GoName < s[j].GoIdent.GoName
+}
+
+type byEnumName []*protogen.Enum
+
+func (s byEnumName) Len() int {
+	return len(s)
+}
+
+func (s byEnumName) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s byEnumName) Less(i, j int) bool {
+	return s[i].GoIdent.GoName < s[j].GoIdent.GoName
 }
