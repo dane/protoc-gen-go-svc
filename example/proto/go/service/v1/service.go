@@ -29,14 +29,26 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
+	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
-	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateListRequest(*publicpb.ListRequest) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -58,18 +70,6 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 		validation.Field(&in.LastName,
 			validation.Required,
 			validation.Length(2, 0),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
 		),
 	)
 	if err != nil {
@@ -289,6 +289,8 @@ func (s *Service) List(ctx context.Context, in *publicpb.ListRequest) (*publicpb
 	return out, err
 }
 func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mutators ...private.CreateRequestMutator) (*publicpb.CreateResponse, *privatepb.CreateResponse, error) {
+	mutators = append(mutators, private.SetCreateRequest_FirstName(in.FirstName))
+	mutators = append(mutators, private.SetCreateRequest_LastName(in.LastName))
 	nextIn := s.ToNextCreateRequest(in)
 	nextOut, privateOut, err := s.Next.CreateImpl(ctx, nextIn, mutators...)
 	if err != nil {
