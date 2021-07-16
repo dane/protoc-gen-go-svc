@@ -1044,7 +1044,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 			fieldName := field.GoName
 			file.P("validation.Field(&in.", fieldName, ",")
 
-			if required(field) {
+			if requiredField(field) {
 				file.P("validation.Required,")
 			}
 

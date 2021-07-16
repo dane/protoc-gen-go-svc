@@ -55,11 +55,14 @@ const (
 var (
 	inputs  map[*protogen.Message]struct{}
 	outputs map[*protogen.Message]struct{}
+	driver  Driver
 )
 
 func init() {
 	inputs = make(map[*protogen.Message]struct{})
 	outputs = make(map[*protogen.Message]struct{})
+	driver = NewCommentDriver(inputs, outputs)
+
 }
 
 func (g Generator) Run(plugin *protogen.Plugin) error {

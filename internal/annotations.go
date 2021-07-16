@@ -1,252 +1,67 @@
 package internal
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-
-	"google.golang.org/protobuf/compiler/protogen"
-)
+import "google.golang.org/protobuf/compiler/protogen"
 
 func delegateMethodName(method *protogen.Method) (string, error) {
-	return delegate(method.Comments)
+	return driver.DelegateMethodName(method)
 }
 
 func delegateEnumName(enum *protogen.Enum) (string, error) {
-	return delegate(enum.Comments)
+	return driver.DelegateEnumName(enum)
 }
 
 func delegateEnumValueName(value *protogen.EnumValue) (string, error) {
-	return delegate(value.Comments)
+	return driver.DelegateEnumValueName(value)
 }
 
 func delegateMessageName(message *protogen.Message) (string, error) {
-	return delegate(message.Comments)
+	return driver.DelegateMessageName(message)
 }
 
 func delegateFieldName(field *protogen.Field) (string, error) {
-	return delegate(field.Comments)
+	return driver.DelegateFieldName(field)
 }
 
 func deprecatedField(field *protogen.Field) bool {
-	return deprecated(field.Comments)
+	return driver.DeprecatedField(field)
 }
 
 func deprecatedMethod(method *protogen.Method) bool {
-	return deprecated(method.Comments)
+	return driver.DeprecatedMethod(method)
 }
 
 func validateMessage(message *protogen.Message) bool {
-	if _, ok := inputs[message]; ok {
-		return true
-	}
-
-	for _, field := range message.Fields {
-		if validateField(field) {
-			return true
-		}
-	}
-
-	return false
+	return driver.ValidateMessage(message)
 }
 
 func validateField(field *protogen.Field) bool {
-	return validate(field.Comments)
+	return driver.ValidateField(field)
 }
 
 func receiveRequired(field *protogen.Field) bool {
-	return receive(field.Comments)["required"] == "true"
+	return driver.ReceiveRequired(field)
 }
 
 func receiveEnumValueNames(value *protogen.EnumValue) []string {
-	prefix := fmt.Sprintf("%s %s ", GenSvc, "receive")
-	var values []string
-
-	for _, comment := range comments(value.Comments, fmt.Sprintf("%s ", "receive")) {
-		comment = strings.TrimPrefix(comment, prefix)
-		comment = strings.Trim(comment, " ")
-		rules := strings.Split(comment, " ")
-		for _, rule := range rules {
-			kv := strings.SplitN(rule, "=", 2)
-			if kv[0] == "name" {
-				values = append(values, kv[1])
-			}
-		}
-	}
-
-	return values
-}
-
-func required(field *protogen.Field) bool {
-	return validations(field.Comments)["required"] == "true"
-}
-
-func min(field *protogen.Field) (string, bool, error) {
-	return number(field, "min")
-}
-
-func max(field *protogen.Field) (string, bool, error) {
-	return number(field, "max")
-}
-
-func in(packageName string, field *protogen.Field) ([]string, error) {
-	value, ok := validations(field.Comments)["in"]
-	if !ok {
-		return nil, nil
-	}
-
-	values := strings.Split(value, ",")
-	if builtins(values) {
-		return values, nil
-	}
-
-	if field.Enum != nil {
-		for i, value := range values {
-			var matched bool
-			enumName := field.Enum.GoIdent.GoName
-			for _, ev := range field.Enum.Values {
-				if string(ev.Desc.Name()) == value {
-					valueName := ev.GoIdent.GoName
-					values[i] = fmt.Sprintf("%s.%s", packageName, valueName)
-					matched = true
-				}
-			}
-			if !matched {
-				return nil, fmt.Errorf("invalid value %s for enum %s", value, enumName)
-			}
-		}
-
-		return values, nil
-	}
-
-	return nil, nil
-}
-
-func builtins(values []string) bool {
-	var bools, ints, floats, strs int
-	for _, value := range values {
-		if contains([]string{"true", "false"}, value) {
-			bools++
-		}
-
-		if len(value) >= 2 && strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
-			strs++
-		}
-
-		if _, err := strconv.ParseInt(value, 10, 64); err == nil {
-			floats++
-		}
-
-		if _, err := strconv.ParseFloat(value, 64); err == nil {
-			floats++
-		}
-	}
-
-	count := len(values)
-	if bools == count || ints == count || floats == count || strs == count {
-		return true
-	}
-	return false
-}
-
-func number(field *protogen.Field, key string) (string, bool, error) {
-	value, ok := validations(field.Comments)[key]
-	if !ok {
-		return "", false, nil
-	}
-
-	if _, err := strconv.ParseInt(value, 10, 64); err == nil {
-		return value, true, nil
-	}
-
-	if _, err := strconv.ParseFloat(value, 64); err == nil {
-		return value, true, nil
-	}
-
-	fieldName := field.GoName
-	return "", false, fmt.Errorf("invalid %s value %q for field %s", key, value, fieldName)
+	return driver.ReceiveEnumValueNames(value)
 }
 
 func is(field *protogen.Field) (string, error) {
-	value, ok := validations(field.Comments)["is"]
-	if !ok {
-		return "", nil
-	}
-
-	if !contains([]string{"email", "uuid", "url"}, value) {
-		return "", fmt.Errorf(`invalid validate "is" value %q`, value)
-	}
-
-	return value, nil
+	return driver.Is(field)
 }
 
-func delegate(commentSet protogen.CommentSet) (string, error) {
-	prefix := fmt.Sprintf("%s delegate ", GenSvc)
-	for _, comment := range comments(commentSet, "delegate ") {
-		cond := strings.SplitN(strings.TrimPrefix(comment, prefix), "=", 2)
-		if cond[0] != "name" {
-			return "", fmt.Errorf("invalid key for delegate annotation: %s", cond[0])
-		}
-
-		return cond[1], nil
-	}
-
-	return "", nil
+func min(field *protogen.Field) (string, bool, error) {
+	return driver.Min(field)
 }
 
-func deprecated(commentSet protogen.CommentSet) bool {
-	return len(comments(commentSet, "deprecated")) > 0
+func max(field *protogen.Field) (string, bool, error) {
+	return driver.Max(field)
 }
 
-func comments(commentSet protogen.CommentSet, prefix string) []string {
-	comments := strings.Split(string(commentSet.Leading), "\n")
-	for _, comment := range commentSet.LeadingDetached {
-		comments = append(comments, string(comment))
-	}
-
-	var filtered []string
-	prefix = fmt.Sprintf("%s %s", GenSvc, prefix)
-	for _, comment := range comments {
-		if strings.HasPrefix(comment, prefix) {
-			filtered = append(filtered, comment)
-		}
-	}
-	return filtered
+func in(packageName string, field *protogen.Field) ([]string, error) {
+	return driver.In(packageName, field)
 }
 
-func validate(commentSet protogen.CommentSet) bool {
-	return len(comments(commentSet, "validate ")) > 0
-}
-
-func receive(commentSet protogen.CommentSet) map[string]string {
-	return kvs(commentSet, "receive")
-}
-
-func validations(commentSet protogen.CommentSet) map[string]string {
-	return kvs(commentSet, "validate")
-}
-
-func kvs(commentSet protogen.CommentSet, name string) map[string]string {
-	prefix := fmt.Sprintf("%s %s ", GenSvc, name)
-	values := make(map[string]string)
-	for _, comment := range comments(commentSet, fmt.Sprintf("%s ", name)) {
-		comment = strings.TrimPrefix(comment, prefix)
-		comment = strings.Trim(comment, " ")
-		rules := strings.Split(comment, " ")
-		for _, rule := range rules {
-			kv := strings.SplitN(rule, "=", 2)
-			values[kv[0]] = kv[1]
-		}
-	}
-
-	return values
-}
-
-func contains(values []string, v string) bool {
-	for _, value := range values {
-		if v == value {
-			return true
-		}
-	}
-	return false
+func requiredField(field *protogen.Field) bool {
+	return driver.RequiredField(field)
 }
