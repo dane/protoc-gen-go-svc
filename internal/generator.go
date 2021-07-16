@@ -21,6 +21,8 @@ type Service struct {
 	GoServiceImportPath protogen.GoImportPath
 	Messages            []*protogen.Message
 	Enums               []*protogen.Enum
+	DeprecatedMessages  []*protogen.Message
+	DeprecatedEnums     []*protogen.Enum
 }
 
 type ServiceType int
@@ -89,6 +91,22 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 			for _, method := range service.Methods {
 				inputs[method.Input] = struct{}{}
 				outputs[method.Output] = struct{}{}
+
+				if deprecatedMethod(method) {
+					svc.DeprecatedMessages = append(svc.DeprecatedMessages, method.Output)
+					finder := newDeprecatedFinder(method.Output)
+					for _, message := range finder.Messages() {
+						if !containsMessage(message, svc.DeprecatedMessages) {
+							svc.DeprecatedMessages = append(svc.DeprecatedMessages, message)
+						}
+					}
+
+					for _, enum := range finder.Enums() {
+						if !containsEnum(enum, svc.DeprecatedEnums) {
+							svc.DeprecatedEnums = append(svc.DeprecatedEnums, enum)
+						}
+					}
+				}
 			}
 		}
 
@@ -173,4 +191,22 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 	}
 
 	return nil
+}
+
+func containsMessage(message *protogen.Message, messages []*protogen.Message) bool {
+	for _, exists := range messages {
+		if message == exists {
+			return true
+		}
+	}
+	return false
+}
+
+func containsEnum(enum *protogen.Enum, enums []*protogen.Enum) bool {
+	for _, exists := range enums {
+		if enum == exists {
+			return true
+		}
+	}
+	return false
 }
