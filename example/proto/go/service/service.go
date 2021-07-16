@@ -10,7 +10,9 @@ import (
 	private "github.com/dane/protoc-gen-go-svc/example/proto/go/service/private"
 )
 
-func RegisterServer(server *grpc.Server, impl privatepb.PeopleServer) {
+type Option interface{ Name() string }
+
+func RegisterServer(server *grpc.Server, impl privatepb.PeopleServer, options ...Option) {
 	servicePrivate := &private.Service{
 		Validator: private.NewValidator(),
 		Impl:      impl,
@@ -28,4 +30,18 @@ func RegisterServer(server *grpc.Server, impl privatepb.PeopleServer) {
 		Next:      servicev2,
 	}
 	v1pb.RegisterPeopleServer(server, servicev1)
+	for _, opt := range options {
+		switch opt.Name() {
+		case private.ValidatorName:
+			servicePrivate.Validator = opt.(private.Validator)
+		case v2.ConverterName:
+			servicev2.Converter = opt.(v2.Converter)
+		case v2.ValidatorName:
+			servicev2.Validator = opt.(v2.Validator)
+		case v1.ConverterName:
+			servicev1.Converter = opt.(v1.Converter)
+		case v1.ValidatorName:
+			servicev1.Validator = opt.(v1.Validator)
+		}
+	}
 }

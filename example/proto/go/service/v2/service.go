@@ -106,39 +106,22 @@ const ValidatorName = "example.v2.People.Validator"
 func NewValidator() Validator { return validator{} }
 
 type Validator interface {
-	ValidateGetRequest(*publicpb.GetRequest) error
+	Name() string
 	ValidatePerson(*publicpb.Person) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 	ValidateUpdateRequest(*publicpb.UpdateRequest) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateGetRequest(*publicpb.GetRequest) error
 }
 type validator struct{}
 
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
+func (v validator) Name() string { return ValidatorName }
 func (v validator) ValidatePerson(in *publicpb.Person) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.FullName,
 			validation.Required,
 		),
 	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -167,12 +150,32 @@ func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 	}
 	return nil
 }
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 
 const ConverterName = "example.v2.People.Converter"
 
 func NewConverter() Converter { return converter{} }
 
 type Converter interface {
+	Name() string
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
 	ToPublicCreateResponse(*privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToPrivateFetchRequest(*publicpb.GetRequest) *privatepb.FetchRequest
@@ -188,6 +191,7 @@ type Converter interface {
 }
 type converter struct{}
 
+func (c converter) Name() string { return ConverterName }
 func (c converter) ToPrivateCreateRequest(in *publicpb.CreateRequest) *privatepb.CreateRequest {
 	var out privatepb.CreateRequest
 	out.FullName = in.FullName

@@ -28,15 +28,22 @@ const ValidatorName = "example.v1.People.Validator"
 func NewValidator() Validator { return validator{} }
 
 type Validator interface {
-	ValidateListRequest(*publicpb.ListRequest) error
+	Name() string
+	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
-	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateListRequest(*publicpb.ListRequest) error
 }
 type validator struct{}
 
-func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
-	err := validation.ValidateStruct(in)
+func (v validator) Name() string { return ValidatorName }
+func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -70,13 +77,8 @@ func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
+func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -88,6 +90,7 @@ const ConverterName = "example.v1.People.Converter"
 func NewConverter() Converter { return converter{} }
 
 type Converter interface {
+	Name() string
 	ToNextCreateRequest(*publicpb.CreateRequest) *nextpb.CreateRequest
 	ToPublicCreateResponse(*nextpb.CreateResponse, *privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToNextGetRequest(*publicpb.GetRequest) *nextpb.GetRequest
@@ -105,6 +108,7 @@ type Converter interface {
 }
 type converter struct{}
 
+func (c converter) Name() string { return ConverterName }
 func (c converter) ToNextCreateRequest(in *publicpb.CreateRequest) *nextpb.CreateRequest {
 	var out nextpb.CreateRequest
 	out.Employment = c.ToNextPerson_Employment(in.Employment)

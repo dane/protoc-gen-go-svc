@@ -52,15 +52,39 @@ const ValidatorName = "example.private.People.Validator"
 func NewValidator() Validator { return validator{} }
 
 type Validator interface {
+	Name() string
+	ValidatePerson(*privatepb.Person) error
 	ValidateCreateRequest(*privatepb.CreateRequest) error
 	ValidateFetchRequest(*privatepb.FetchRequest) error
-	ValidateDeleteRequest(*privatepb.DeleteRequest) error
-	ValidatePerson(*privatepb.Person) error
 	ValidateListRequest(*privatepb.ListRequest) error
 	ValidateUpdateRequest(*privatepb.UpdateRequest) error
+	ValidateDeleteRequest(*privatepb.DeleteRequest) error
 }
 type validator struct{}
 
+func (v validator) Name() string { return ValidatorName }
+func (v validator) ValidatePerson(in *privatepb.Person) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FirstName,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.LastName,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.FullName,
+			validation.Required,
+			validation.Length(5, 0),
+		),
+		validation.Field(&in.Age,
+			validation.Required,
+			validation.Min(16),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.FirstName,
@@ -94,35 +118,6 @@ func (v validator) ValidateFetchRequest(in *privatepb.FetchRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidatePerson(in *privatepb.Person) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.FirstName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.LastName,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.FullName,
-			validation.Required,
-			validation.Length(5, 0),
-		),
-		validation.Field(&in.Age,
-			validation.Required,
-			validation.Min(16),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
@@ -141,6 +136,13 @@ func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
 			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
 		),
 	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
+	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
