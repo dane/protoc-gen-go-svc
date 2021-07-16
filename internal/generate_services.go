@@ -30,7 +30,9 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 	}
 	file.P(")")
 
-	file.P("func RegisterServer(server *grpc.Server, impl privatepb.", private.GoName, "Server) {")
+	file.P("type Option interface { Name() string }")
+
+	file.P("func RegisterServer(server *grpc.Server, impl privatepb.", private.GoName, "Server, options ...Option) {")
 	file.P("servicePrivate := &", private.GoPackageName, ".Service{")
 	file.P("Validator: ", private.GoPackageName, ".NewValidator(),")
 	file.P("Impl: impl,")
@@ -53,6 +55,22 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 
 		file.P(packageName, "pb.Register", serviceName, "Server(server, ", varName, ")")
 	}
+
+	file.P("for _, opt := range options {")
+	file.P("switch opt.Name() {")
+	file.P("case private.ValidatorName:")
+	file.P("servicePrivate.Validator = opt.(private.Validator)")
+
+	for _, service := range services {
+		packageName := service.GoPackageName
+		varName := fmt.Sprintf("service%s", packageName)
+		file.P("case ", packageName, ".ConverterName:")
+		file.P(varName, ".Converter = opt.(", packageName, ".Converter)")
+		file.P("case ", packageName, ".ValidatorName:")
+		file.P(varName, ".Validator = opt.(", packageName, ".Validator)")
+	}
+	file.P("}")
+	file.P("}")
 
 	file.P("}")
 
@@ -189,6 +207,7 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 
 	// Generate converter interface.
 	file.P("type Converter interface {")
+	file.P("Name() string")
 	for _, method := range service.Methods {
 		publicIn := method.Input
 		publicOut := method.Output
@@ -274,6 +293,7 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 
 	// Generate converter functions.
 	file.P("type converter struct {}")
+	file.P("func (c converter) Name() string { return ConverterName }")
 
 	for _, method := range service.Methods {
 		publicIn := method.Input
@@ -976,6 +996,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	file.P("func NewValidator() Validator { return validator{} }")
 
 	file.P("type Validator interface {")
+	file.P("Name() string")
 	for _, message := range service.Messages {
 		if !validateMessage(message) {
 			continue
@@ -987,6 +1008,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	file.P("}")
 
 	file.P("type validator struct {}")
+	file.P("func (v validator) Name() string { return ValidatorName }")
 	for _, message := range service.Messages {
 		if !validateMessage(message) {
 			continue
