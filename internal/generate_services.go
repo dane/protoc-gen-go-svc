@@ -980,6 +980,25 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 	privateOutName := privateOut.GoIdent.GoName
 
 	file.P("func (s *Service) ", publicMethodName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
+
+	for _, field := range method.Input.Fields {
+		if deprecatedField(field) {
+			privateMessage, err := findPrivateMessage(method.Input, chain)
+			if err != nil {
+				return err
+			}
+
+			privateField, err := findNextField(field, privateMessage)
+			if err != nil {
+				return err
+			}
+
+			privateMessageName := privateMessage.GoIdent.GoName
+			privateFieldName := privateField.GoName
+			file.P("mutators = append(mutators, private.Set", privateMessageName, "_", privateFieldName, "(in.", field.GoName, "))")
+		}
+	}
+
 	file.P("nextIn := s.ToNext", nextInName, "(in)")
 	file.P("nextOut, privateOut, err := s.Next.", nextMethodName, "Impl(ctx, nextIn, mutators...)")
 	file.P("if err != nil { return nil, nil, err }")
