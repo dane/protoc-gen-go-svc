@@ -11,45 +11,39 @@ import (
 	private "github.com/dane/protoc-gen-go-svc/example/proto/go/service/private"
 )
 
-var _ = validation.Validatable
 var _ = is.Int
-var _ = codes.Code
-var _ = status.Status
-var _ = *publicpb.PeopleServer
-var _ = *privatepb.PeopleServer
-var _ = *private.Service
 
 type Service struct {
-	Validator Validator
-	Converter Converter
-	Private   *privatepb.Service
+	Validator
+	Converter
+	Private *private.Service
 	publicpb.PeopleServer
 }
 
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.CreateImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
 	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.GetImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.DeleteImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Update(ctx context.Context, in *publicpb.UpdateRequest) (*publicpb.UpdateResponse, error) {
 	if err := s.ValidateUpdateRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.UpdateImpl(ctx, in)
 	return out, err
@@ -109,14 +103,54 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 
 const ValidatorName = "example.v2.People.Validator"
 
+func NewValidator() Validator { return validator{} }
+
 type Validator interface {
-	ValidateUpdateRequest(*publicpb.UpdateRequest) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
+	ValidatePerson(*publicpb.Person) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 }
 type validator struct{}
 
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidatePerson(in *publicpb.Person) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FullName,
+			validation.Required,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -133,34 +167,10 @@ func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 
 const ConverterName = "example.v2.People.Converter"
+
+func NewConverter() Converter { return converter{} }
 
 type Converter interface {
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
@@ -292,14 +302,14 @@ func (c converter) ToPrivatePerson_Employment(in publicpb.Person_Employment) pri
 }
 func (c converter) ToPublicPerson_Employment(in privatepb.Person_Employment) (publicpb.Person_Employment, error) {
 	switch in {
-	case privatepb.UNDEFINED:
-		return publicpb.UNSET
-	case privatepb.FULL_TIME:
-		return publicpb.FULL_TIME
-	case privatepb.PART_TIME:
-		return publicpb.PART_TIME
-	case privatepb.UNEMPLOYED:
-		return publicpb.UNEMPLOYED
+	case privatepb.Person_UNDEFINED:
+		return publicpb.Person_UNSET, nil
+	case privatepb.Person_FULL_TIME:
+		return publicpb.Person_FULL_TIME, nil
+	case privatepb.Person_PART_TIME:
+		return publicpb.Person_PART_TIME, nil
+	case privatepb.Person_UNEMPLOYED:
+		return publicpb.Person_UNEMPLOYED, nil
 	}
 	return publicpb.Person_UNSET, status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)
 }

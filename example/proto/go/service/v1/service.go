@@ -13,34 +13,51 @@ import (
 	next "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2"
 )
 
-var _ = validation.Validatable
 var _ = is.Int
-var _ = codes.Code
-var _ = status.Status
-var _ = *publicpb.PeopleServer
-var _ = *privatepb.PeopleServer
-var _ = *nextpb.PeopleServer
-var _ = *private.Service
-var _ = *next.Service
 
 type Service struct {
-	Validator Validator
-	Converter Converter
-	Private   *privatepb.Service
-	Next      *nextpb.Service
+	Validator
+	Converter
+	Private *private.Service
+	Next    *next.Service
 	publicpb.PeopleServer
 }
 
 const ValidatorName = "example.v1.People.Validator"
 
+func NewValidator() Validator { return validator{} }
+
 type Validator interface {
+	ValidateListRequest(*publicpb.ListRequest) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
-	ValidateListRequest(*publicpb.ListRequest) error
 }
 type validator struct{}
 
+func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FirstName,
+			validation.Required,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.LastName,
+			validation.Required,
+			validation.Length(2, 0),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -65,31 +82,10 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	}
 	return nil
 }
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.FirstName,
-			validation.Required,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.LastName,
-			validation.Required,
-			validation.Length(2, 0),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 
 const ConverterName = "example.v1.People.Converter"
+
+func NewConverter() Converter { return converter{} }
 
 type Converter interface {
 	ToNextCreateRequest(*publicpb.CreateRequest) *nextpb.CreateRequest
@@ -99,11 +95,13 @@ type Converter interface {
 	ToNextDeleteRequest(*publicpb.DeleteRequest) *nextpb.DeleteRequest
 	ToPublicDeleteResponse(*nextpb.DeleteResponse, *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
 	ToPrivateListRequest(*publicpb.ListRequest) *privatepb.ListRequest
-	ToPublicListResponse(*privatepb.ListResponse) (*publicpb.ListResponse, error)
 	ToNextPerson(*publicpb.Person) *nextpb.Person
 	ToPublicPerson(*nextpb.Person, *privatepb.Person) (*publicpb.Person, error)
 	ToNextPerson_Employment(publicpb.Person_Employment) nextpb.Person_Employment
-	ToPublicPerson_Employment(nextpb.Person_Employment, privatepb.Person_Employment) (publicpb.Person_Employment, error)
+	ToPublicPerson_Employment(nextpb.Person_Employment) (publicpb.Person_Employment, error)
+	ToDeprecatedPublicListResponse(*privatepb.ListResponse) (*publicpb.ListResponse, error)
+	ToDeprecatedPublicPerson(*privatepb.Person) (*publicpb.Person, error)
+	ToDeprecatedPublicPerson_Employment(privatepb.Person_Employment) (publicpb.Person_Employment, error)
 }
 type converter struct{}
 
@@ -161,19 +159,6 @@ func (c converter) ToPrivateListRequest(in *publicpb.ListRequest) *privatepb.Lis
 	var out privatepb.ListRequest
 	return &out
 }
-func (c converter) ToPublicListResponse(in *privatepb.ListResponse) (*publicpb.ListResponse, error) {
-	var required validation.Errors
-	if err := required.Filter(); err != nil {
-		return nil, err
-	}
-	var out publicpb.ListResponse
-	var err error
-	out.People, err = c.ToPublicPerson(in.People)
-	if err != nil {
-		return nil, err
-	}
-	return &out, err
-}
 func (c converter) ToNextPerson(in *publicpb.Person) *nextpb.Person {
 	var out nextpb.Person
 	out.Id = in.Id
@@ -189,15 +174,15 @@ func (c converter) ToPublicPerson(nextIn *nextpb.Person, privateIn *privatepb.Pe
 	}
 	var out publicpb.Person
 	var err error
-	out.Id = in.Id
-	out.FirstName = in.FirstName
-	out.LastName = in.LastName
-	out.Employment, err = c.ToPublicPerson_Employment(nextIn.Employment, privateIn.Employment)
+	out.Id = nextIn.Id
+	out.FirstName = privateIn.FirstName
+	out.LastName = privateIn.LastName
+	out.Employment, err = c.ToPublicPerson_Employment(nextIn.Employment)
 	if err != nil {
 		return nil, err
 	}
-	out.CreatedAt = in.CreatedAt
-	out.UpdatedAt = in.UpdatedAt
+	out.CreatedAt = nextIn.CreatedAt
+	out.UpdatedAt = nextIn.UpdatedAt
 	return &out, err
 }
 func (c converter) ToNextPerson_Employment(in publicpb.Person_Employment) nextpb.Person_Employment {
@@ -213,43 +198,88 @@ func (c converter) ToNextPerson_Employment(in publicpb.Person_Employment) nextpb
 }
 func (c converter) ToPublicPerson_Employment(in nextpb.Person_Employment) (publicpb.Person_Employment, error) {
 	switch in {
-	case nextpb.UNSET:
-		return publicpb.UNSET
-	case nextpb.FULL_TIME:
-		return publicpb.EMPLOYED
-	case nextpb.PART_TIME:
-		return publicpb.EMPLOYED
-	case nextpb.FULL_TIME:
-		return publicpb.EMPLOYED
-	case nextpb.UNEMPLOYED:
-		return publicpb.UNEMPLOYED
+	case nextpb.Person_UNSET:
+		return publicpb.Person_UNSET, nil
+	case nextpb.Person_FULL_TIME:
+		return publicpb.Person_EMPLOYED, nil
+	case nextpb.Person_PART_TIME:
+		return publicpb.Person_EMPLOYED, nil
+	case nextpb.Person_UNEMPLOYED:
+		return publicpb.Person_UNEMPLOYED, nil
+	}
+	return publicpb.Person_UNSET, status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)
+}
+func (c converter) ToDeprecatedPublicListResponse(in *privatepb.ListResponse) (*publicpb.ListResponse, error) {
+	var required validation.Errors
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.ListResponse
+	var err error
+	for _, item := range in.People {
+		conv, err := c.ToDeprecatedPublicPerson(item)
+		if err != nil {
+			return nil, err
+		}
+		out.People = append(out.People, conv)
+	}
+	return &out, err
+}
+func (c converter) ToDeprecatedPublicPerson(in *privatepb.Person) (*publicpb.Person, error) {
+	var required validation.Errors
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.Person
+	var err error
+	out.Id = in.Id
+	out.FirstName = in.FirstName
+	out.LastName = in.LastName
+	out.Employment, err = c.ToDeprecatedPublicPerson_Employment(in.Employment)
+	if err != nil {
+		return nil, err
+	}
+	out.CreatedAt = in.CreatedAt
+	out.UpdatedAt = in.UpdatedAt
+	return &out, err
+}
+func (c converter) ToDeprecatedPublicPerson_Employment(in privatepb.Person_Employment) (publicpb.Person_Employment, error) {
+	switch in {
+	case privatepb.Person_UNDEFINED:
+		return publicpb.Person_UNSET, nil
+	case privatepb.Person_FULL_TIME:
+		return publicpb.Person_EMPLOYED, nil
+	case privatepb.Person_PART_TIME:
+		return publicpb.Person_EMPLOYED, nil
+	case privatepb.Person_UNEMPLOYED:
+		return publicpb.Person_UNEMPLOYED, nil
 	}
 	return publicpb.Person_UNSET, status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)
 }
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.CreateImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
 	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.GetImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.DeleteImpl(ctx, in)
 	return out, err
 }
 func (s *Service) List(ctx context.Context, in *publicpb.ListRequest) (*publicpb.ListResponse, error) {
 	if err := s.ValidateListRequest(in); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	out, _, err := s.ListImpl(ctx, in)
 	return out, err
@@ -297,7 +327,7 @@ func (s *Service) ListImpl(ctx context.Context, in *publicpb.ListRequest, mutato
 	if err != nil {
 		return nil, nil, err
 	}
-	out, err := s.ToPublicListResponse(privateOut)
+	out, err := s.ToDeprecatedPublicListResponse(privateOut)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -17,6 +17,7 @@ service People {
 
 message Person {
   string id = 1;
+  //gen:svc validate required=true
   string full_name = 2;
   int64 age = 3;
   Employment employment = 4;
