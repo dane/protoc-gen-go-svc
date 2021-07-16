@@ -14,7 +14,6 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 	services := chain[:len(chain)-1]
 	imports := []protogen.GoIdent{
 		protogen.GoImportPath("google.golang.org/grpc").Ident("grpc"),
-		protogen.GoImportPath("context").Ident("context"),
 	}
 
 	for _, service := range chain {
@@ -40,6 +39,7 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 	sort.Sort(sort.Reverse(byPackageName(services)))
 	for i, service := range services {
 		packageName := service.GoPackageName
+		serviceName := service.GoName
 		varName := fmt.Sprintf("service%s", packageName)
 		file.P(varName, ":= &", packageName, ".Service{")
 		file.P("Validator: ", packageName, ".NewValidator(),")
@@ -50,6 +50,8 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 			file.P("Next: ", nextVarName, ",")
 		}
 		file.P("}")
+
+		file.P(packageName, "pb.Register", serviceName, "Server(server, ", varName, ")")
 	}
 
 	file.P("}")
@@ -183,6 +185,7 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 	private := chain[len(chain)-1]
 
 	file.P(`const ConverterName = "`, service.Desc.FullName(), `.Converter"`)
+	file.P("func NewConverter() Converter { return converter{} }")
 
 	// Generate converter interface.
 	file.P("type Converter interface {")
@@ -970,6 +973,8 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 
 func generateServiceValidators(file *protogen.GeneratedFile, packageName string, service *Service) error {
 	file.P(`const ValidatorName = "`, service.Desc.FullName(), `.Validator"`)
+	file.P("func NewValidator() Validator { return validator{} }")
+
 	file.P("type Validator interface {")
 	for _, message := range service.Messages {
 		if !validateMessage(message) {
