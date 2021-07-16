@@ -79,7 +79,8 @@ type Person struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	//gen:svc validate required=true
 	FullName   string                 `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
 	Age        int64                  `protobuf:"varint,3,opt,name=age,proto3" json:"age,omitempty"`
 	Employment Person_Employment      `protobuf:"varint,4,opt,name=employment,proto3,enum=example.v2.Person_Employment" json:"employment,omitempty"`

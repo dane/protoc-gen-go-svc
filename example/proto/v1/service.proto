@@ -1,42 +1,47 @@
 syntax = "proto3";
 
-package example.v2;
+package example.v1;
 
-option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v2;v2";
+option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v1;v1";
 
 import "google/protobuf/timestamp.proto";
 
 //gen:svc
 service People {
   rpc Create(CreateRequest) returns (CreateResponse);
-  //gen:svc delegate name=Fetch
   rpc Get(GetRequest) returns (GetResponse);
   rpc Delete(DeleteRequest) returns (DeleteResponse);
-  rpc Update(UpdateRequest) returns (UpdateResponse);
+  //gen:svc deprecated
+  rpc List(ListRequest) returns (ListResponse);
 }
 
 message Person {
   string id = 1;
-  //gen:svc validate required=true
-  string full_name = 2;
-  int64 age = 3;
+  //gen:svc deprecated
+  string first_name = 2;
+  //gen:svc deprecated
+  string last_name = 3;
   Employment employment = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
 
   enum Employment {
-    //gen:svc delegate name=UNDEFINED
     UNSET = 0;
-    FULL_TIME = 1;
-    PART_TIME = 2;
-    UNEMPLOYED = 3;
+    //gen:svc delegate name=FULL_TIME
+    //gen:svc receive name=FULL_TIME
+    //gen:svc receive name=PART_TIME
+    EMPLOYED = 1;
+    UNEMPLOYED = 2;
   }
 }
 
 message CreateRequest {
-  string full_name = 1;
-  //gen:svc default=0
-  int64 age = 2;
+  //gen:svc deprecated
+  //gen:svc validate required=true min=2
+  string first_name = 1;
+  //gen:svc deprecated
+  //gen:svc validate required=true min=2
+  string last_name = 2;
   Person.Employment employment = 3;
 }
 
@@ -44,31 +49,24 @@ message CreateResponse {
   Person person = 1;
 }
 
-//gen:svc delegate name=FetchRequest
 message GetRequest {
   //gen:svc validate required=true is=uuid
   string id = 1;
 }
 
-//gen:svc delegate name=FetchResponse
 message GetResponse {
   Person person = 1;
 }
 
 message DeleteRequest {
+  //gen:svc validate required=true is=uuid
   string id = 1;
 }
 
 message DeleteResponse {}
 
-message UpdateRequest {
-  //gen:svc validate required=true is=uuid
-  string id = 1;
+message ListRequest {}
 
-  //gen:svc validate required=true
-  Person person = 2;
-}
-
-message UpdateResponse {
-  Person person = 1;
+message ListResponse {
+  repeated Person people = 1;
 }
