@@ -2,31 +2,31 @@ syntax = "proto3";
 
 package example.v2;
 
-option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v2;v2";
-
 import "google/protobuf/timestamp.proto";
+import "gen/svc/annotations.proto";
 
-//gen:svc
+option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v2;v2";
+option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2;v2";
+
 service People {
   rpc Create(CreateRequest) returns (CreateResponse);
-  //gen:svc delegate name=Fetch
-  rpc Get(GetRequest) returns (GetResponse);
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (gen.svc.method).delegate = { name: "Fetch" };
+  };
   rpc Delete(DeleteRequest) returns (DeleteResponse);
   rpc Update(UpdateRequest) returns (UpdateResponse);
 }
 
 message Person {
   string id = 1;
-  //gen:svc validate required=true
-  string full_name = 2;
+  string full_name = 2 [(gen.svc.field).validate = { required: true }];
   int64 age = 3;
   Employment employment = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
 
   enum Employment {
-    //gen:svc delegate name=UNDEFINED
-    UNSET = 0;
+    UNSET = 0 [(gen.svc.enum_value).delegate = { name: "UNDEFINED" }];
     FULL_TIME = 1;
     PART_TIME = 2;
     UNEMPLOYED = 3;
@@ -35,8 +35,7 @@ message Person {
 
 message CreateRequest {
   string full_name = 1;
-  //gen:svc default=0
-  int64 age = 2;
+  int64 age = 2 [(gen.svc.field).default = { int64: 0 }];
   Person.Employment employment = 3;
 }
 
@@ -44,14 +43,13 @@ message CreateResponse {
   Person person = 1;
 }
 
-//gen:svc delegate name=FetchRequest
 message GetRequest {
-  //gen:svc validate required=true is=uuid
-  string id = 1;
+  option (gen.svc.message).delegate = { name: "FetchRequest" };
+  string id = 1 [(gen.svc.field).validate = { required: true, is: UUID }];
 }
 
-//gen:svc delegate name=FetchResponse
 message GetResponse {
+  option (gen.svc.message).delegate = { name: "FetchResponse" };
   Person person = 1;
 }
 
@@ -62,11 +60,8 @@ message DeleteRequest {
 message DeleteResponse {}
 
 message UpdateRequest {
-  //gen:svc validate required=true is=uuid
-  string id = 1;
-
-  //gen:svc validate required=true
-  Person person = 2;
+  string id = 1     [(gen.svc.field).validate = { required: true, is: UUID }];
+  Person person = 2 [(gen.svc.field).validate = { required: true }];
 }
 
 message UpdateResponse {
