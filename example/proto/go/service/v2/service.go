@@ -1,6 +1,7 @@
 package v2
 
 import (
+	fmt "fmt"
 	context "context"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
@@ -13,6 +14,7 @@ import (
 
 var _ = is.Int
 var _ = validation.Validate
+var _ = fmt.Errorf
 
 type Service struct {
 	Validator
@@ -23,28 +25,28 @@ type Service struct {
 
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	out, _, err := s.CreateImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
 	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	out, _, err := s.GetImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	out, _, err := s.DeleteImpl(ctx, in)
 	return out, err
 }
 func (s *Service) Update(ctx context.Context, in *publicpb.UpdateRequest) (*publicpb.UpdateResponse, error) {
 	if err := s.ValidateUpdateRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	out, _, err := s.UpdateImpl(ctx, in)
 	return out, err
@@ -58,7 +60,7 @@ func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mu
 	}
 	out, err := s.ToPublicCreateResponse(privateOut)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, privateOut, nil
 }
@@ -71,7 +73,7 @@ func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators
 	}
 	out, err := s.ToPublicGetResponse(privateOut)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, privateOut, nil
 }
@@ -84,7 +86,7 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 	}
 	out, err := s.ToPublicDeleteResponse(privateOut)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, privateOut, nil
 }
@@ -97,7 +99,7 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 	}
 	out, err := s.ToPublicUpdateResponse(privateOut)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, privateOut, nil
 }
@@ -108,43 +110,15 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
-	ValidateCreateRequest(*publicpb.CreateRequest) error
-	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 	ValidatePerson(*publicpb.Person) error
+	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-		validation.Field(&in.FullName,
-			validation.Required,
-			validation.Length(4, 0),
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -157,7 +131,7 @@ func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 		),
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 	return nil
 }
@@ -168,14 +142,42 @@ func (v validator) ValidatePerson(in *publicpb.Person) error {
 		),
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+		validation.Field(&in.FullName,
+			validation.Required,
+			validation.Length(4, 0),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 	return nil
 }
@@ -326,5 +328,5 @@ func (c converter) ToPublicPerson_Employment(in privatepb.Person_Employment) (pu
 	case privatepb.Person_UNEMPLOYED:
 		return publicpb.Person_UNEMPLOYED, nil
 	}
-	return publicpb.Person_UNSET, status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)
+	return publicpb.Person_UNSET, fmt.Errorf("%q is not a supported value for this service version", in)
 }
