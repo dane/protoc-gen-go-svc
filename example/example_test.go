@@ -10,6 +10,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
 	service "github.com/dane/protoc-gen-go-svc/example/proto/go/service"
@@ -127,6 +129,16 @@ func TestExample(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name:   "get person in v1 created in v2",
+			client: clientv1,
+			rpc:    "Get",
+			req: &v1pb.GetRequest{
+				Id: uuidv2,
+			},
+			res: nil,
+			err: status.Error(codes.FailedPrecondition, "A requested resource is not compatible with this API version"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -154,8 +166,22 @@ func TestExample(t *testing.T) {
 				t.Fatal(cmp.Diff(tt.res, res, ignore...))
 			}
 
-			if tt.err != err {
-				t.Fatalf("got %s; want %s", err, tt.err)
+			if tt.err != nil {
+				if err == nil {
+					t.Fatalf("got %v; want %s", err, tt.err)
+				}
+
+				want := status.Convert(tt.err)
+				got := status.Convert(err)
+
+				if got.Code() != want.Code() {
+					t.Fatalf("got %s; want %s", got.Code(), want.Code())
+				}
+
+				// TODO: Test error messages
+				//if got.Message() != want.Message() {
+				//	t.Fatalf("got %s; want %s", got.Message(), want.Message())
+				//}
 			}
 		})
 	}
