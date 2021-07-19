@@ -860,7 +860,7 @@ func commonImports(imports ...protogen.GoIdent) []protogen.GoIdent {
 }
 
 func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {
-	refs = append([]string{"is.Int"}, refs...)
+	refs = append([]string{"is.Int", "validation.Validate"}, refs...)
 
 	for _, ref := range refs {
 		file.P("var _ =", ref)
@@ -1052,7 +1052,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 			if err != nil {
 				return err
 			}
-			switch isName {
+			switch strings.ToLower(isName) {
 			case "uuid":
 				file.P("is.UUID,")
 			case "url":

@@ -61,7 +61,7 @@ var (
 func init() {
 	inputs = make(map[*protogen.Message]struct{})
 	outputs = make(map[*protogen.Message]struct{})
-	driver = NewCommentDriver(inputs, outputs)
+	driver = NewOptionDriver(inputs, outputs)
 
 }
 
