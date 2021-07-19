@@ -18,10 +18,16 @@ service People {
 }
 
 message Person {
-  string id = 1;
-  string first_name = 2 [(gen.svc.field).deprecated = true];
-  string last_name = 3  [(gen.svc.field).deprecated = true];
-  Employment employment = 4;
+  string id = 1 [(gen.svc.field).receive = { required: true }];
+  string first_name = 2 [
+    (gen.svc.field).deprecated = true,
+    (gen.svc.field).receive = { required: true }
+  ];
+  string last_name = 3  [
+    (gen.svc.field).deprecated = true,
+    (gen.svc.field).receive = { required: true }
+  ];
+  Employment employment = 4 [(gen.svc.field).receive = { required: true }];
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
 
