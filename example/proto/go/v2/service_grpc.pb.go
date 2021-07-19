@@ -19,7 +19,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PeopleClient interface {
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
-	//gen:svc delegate name=Fetch
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
@@ -74,7 +73,6 @@ func (c *peopleClient) Update(ctx context.Context, in *UpdateRequest, opts ...gr
 // for forward compatibility
 type PeopleServer interface {
 	Create(context.Context, *CreateRequest) (*CreateResponse, error)
-	//gen:svc delegate name=Fetch
 	Get(context.Context, *GetRequest) (*GetResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)

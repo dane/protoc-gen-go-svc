@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package gen.svc;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/dane/protoc-gen-go-svc/gen/svc;svc";
+
+extend google.protobuf.FileOptions {
+  string go_package = 1115;
+}
+
+extend google.protobuf.MethodOptions {
+  MethodAnnotation method = 1115;
+}
+
+extend google.protobuf.MessageOptions {
+  MessageAnnotation message = 1115;
+}
+
+extend google.protobuf.FieldOptions {
+  FieldAnnotation field = 1115;
+};
+
+extend google.protobuf.EnumOptions {
+  EnumAnnotation enum = 1115;
+}
+
+extend google.protobuf.EnumValueOptions {
+  EnumValueAnnotation enum_value = 1115;
+}
+
+message MethodAnnotation {
+  Delegate delegate = 1;
+  bool deprecated = 2;
+}
+
+message MessageAnnotation {
+  Delegate delegate = 1;
+}
+
+message FieldAnnotation {
+  Delegate delegate = 1;
+  FieldReceive receive = 2;
+  Validate validate = 3;
+  Default  default = 4;
+  bool deprecated = 5;
+}
+
+message EnumAnnotation {
+  Delegate delegate = 1;
+}
+
+message EnumValueAnnotation {
+  Delegate delegate = 1;
+  Receive receive = 2;
+}
+
+message Delegate {
+  string name = 1;
+}
+
+message Receive {
+  string name = 1;
+  repeated string names = 2;
+}
+
+message FieldReceive {
+  bool required = 1;
+}
+
+message Validate {
+  bool required = 1;
+  Number min = 2;
+  Number max = 3;
+  IsType is = 4;
+  repeated string in = 5;
+
+  enum IsType {
+    UNSPECIFIED = 0;
+    UUID = 1;
+    EMAIL = 2;
+    URL = 3;
+  }
+}
+
+message Default {
+  bool bool = 1;
+  int64 int64 = 2;
+  uint64 uint64 = 3;
+  double double = 4;
+  string string = 5;
+}
+
+message Number {
+  oneof value {
+    int64 int64 = 1;
+    double double = 2;
+    uint64 uint64 = 3;
+  }
+}

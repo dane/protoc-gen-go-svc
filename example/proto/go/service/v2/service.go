@@ -12,6 +12,7 @@ import (
 )
 
 var _ = is.Int
+var _ = validation.Validate
 
 type Service struct {
 	Validator
@@ -107,15 +108,43 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
+	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 	ValidatePerson(*publicpb.Person) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateGetRequest(*publicpb.GetRequest) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+		validation.Field(&in.FullName,
+			validation.Required,
+			validation.Length(4, 0),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -143,27 +172,8 @@ func (v validator) ValidatePerson(in *publicpb.Person) error {
 	}
 	return nil
 }
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -194,6 +204,7 @@ type converter struct{}
 func (c converter) Name() string { return ConverterName }
 func (c converter) ToPrivateCreateRequest(in *publicpb.CreateRequest) *privatepb.CreateRequest {
 	var out privatepb.CreateRequest
+	out.Id = in.Id
 	out.FullName = in.FullName
 	out.Age = in.Age
 	out.Employment = c.ToPrivatePerson_Employment(in.Employment)
