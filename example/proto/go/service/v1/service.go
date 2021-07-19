@@ -14,6 +14,7 @@ import (
 )
 
 var _ = is.Int
+var _ = validation.Validate
 
 type Service struct {
 	Validator
@@ -29,14 +30,30 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
+	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
-	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateListRequest(*publicpb.ListRequest) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FirstName,
+			validation.Required,
+			validation.Length(2, 0),
+		),
+		validation.Field(&in.LastName,
+			validation.Required,
+			validation.Length(2, 0),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -54,22 +71,6 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 		validation.Field(&in.Id,
 			validation.Required,
 			is.UUID,
-		),
-	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.FirstName,
-			validation.Required,
-			validation.Length(2, 0),
-		),
-		validation.Field(&in.LastName,
-			validation.Required,
-			validation.Length(2, 0),
 		),
 	)
 	if err != nil {
