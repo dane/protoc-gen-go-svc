@@ -34,9 +34,10 @@ message Person {
 }
 
 message CreateRequest {
-  string full_name = 1;
-  int64 age = 2 [(gen.svc.field).default = { int64: 0 }];
-  Person.Employment employment = 3;
+  string id = 1 [(gen.svc.field).validate = { required: true, is: UUID }];
+  string full_name = 2 [(gen.svc.field).validate = { required: true, min: { int64: 4 } }];
+  int64 age = 3 [(gen.svc.field).default = { int64: 0 }];
+  Person.Employment employment = 4;
 }
 
 message CreateResponse {
