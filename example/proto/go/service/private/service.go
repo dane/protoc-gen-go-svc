@@ -1,6 +1,7 @@
 package private
 
 import (
+	fmt "fmt"
 	context "context"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
@@ -11,6 +12,7 @@ import (
 
 var _ = is.Int
 var _ = validation.Validate
+var _ = fmt.Errorf
 
 type Service struct {
 	Validator
@@ -19,31 +21,31 @@ type Service struct {
 
 func (s *Service) Create(ctx context.Context, in *privatepb.CreateRequest) (*privatepb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	return s.Impl.Create(ctx, in)
 }
 func (s *Service) Fetch(ctx context.Context, in *privatepb.FetchRequest) (*privatepb.FetchResponse, error) {
 	if err := s.ValidateFetchRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	return s.Impl.Fetch(ctx, in)
 }
 func (s *Service) Delete(ctx context.Context, in *privatepb.DeleteRequest) (*privatepb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	return s.Impl.Delete(ctx, in)
 }
 func (s *Service) List(ctx context.Context, in *privatepb.ListRequest) (*privatepb.ListResponse, error) {
 	if err := s.ValidateListRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	return s.Impl.List(ctx, in)
 }
 func (s *Service) Update(ctx context.Context, in *privatepb.UpdateRequest) (*privatepb.UpdateResponse, error) {
 	if err := s.ValidateUpdateRequest(in); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	return s.Impl.Update(ctx, in)
 }
@@ -54,16 +56,23 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
+	ValidateListRequest(*privatepb.ListRequest) error
 	ValidateUpdateRequest(*privatepb.UpdateRequest) error
+	ValidateFetchRequest(*privatepb.FetchRequest) error
 	ValidatePerson(*privatepb.Person) error
 	ValidateCreateRequest(*privatepb.CreateRequest) error
-	ValidateFetchRequest(*privatepb.FetchRequest) error
 	ValidateDeleteRequest(*privatepb.DeleteRequest) error
-	ValidateListRequest(*privatepb.ListRequest) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
+func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
@@ -76,7 +85,14 @@ func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
 		),
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateFetchRequest(in *privatepb.FetchRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -102,7 +118,7 @@ func (v validator) ValidatePerson(in *privatepb.Person) error {
 		),
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 	return nil
 }
@@ -132,28 +148,14 @@ func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
 		),
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateFetchRequest(in *privatepb.FetchRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
 	err := validation.ValidateStruct(in)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 	return nil
 }
