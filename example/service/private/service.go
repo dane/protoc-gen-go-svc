@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,13 +22,14 @@ func (s *Service) Create(ctx context.Context, req *privatepb.CreateRequest) (*pr
 	defer s.mu.Unlock()
 
 	person := &privatepb.Person{
-		Id:        uuid.New().String(),
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		FullName:  req.FullName,
-		Age:       req.Age,
-		CreatedAt: timestamppb.Now(),
-		UpdatedAt: timestamppb.Now(),
+		Id:         req.Id,
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		FullName:   req.FullName,
+		Age:        req.Age,
+		Employment: req.Employment,
+		CreatedAt:  timestamppb.Now(),
+		UpdatedAt:  timestamppb.Now(),
 	}
 
 	s.Store[person.Id] = person
