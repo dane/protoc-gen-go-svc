@@ -438,7 +438,7 @@ func generateConverterToPublicEnum(file *protogen.GeneratedFile, enum *protogen.
 	file.P("}")
 
 	defaultValue := enum.Values[0].GoIdent.GoName
-	file.P("return publicpb.", defaultValue, `,status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)`)
+	file.P("return publicpb.", defaultValue, `,fmt.Errorf("%q is not a supported value for this service version", in)`)
 	file.P("}")
 
 	return nil
@@ -483,7 +483,7 @@ func generateConverterToDeprecatedPublicEnum(file *protogen.GeneratedFile, enum 
 	file.P("}")
 
 	defaultValue := enum.Values[0].GoIdent.GoName
-	file.P("return publicpb.", defaultValue, `,status.Errorf(codes.FailedPrecondition, "%q is not a supported value for this service version", in)`)
+	file.P("return publicpb.", defaultValue, `,fmt.Errorf("%q is not a supported value for this service version", in)`)
 	file.P("}")
 
 	return nil
@@ -710,16 +710,21 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 	nextInName := nextIn.GoIdent.GoName
 
 	file.P("func (c converter) ToPublic", publicInName, "(nextIn *nextpb.", nextInName, ", privateIn *privatepb.", privateInName, ") (*publicpb.", publicInName, ", error) {")
-	file.P("var required validation.Errors")
+	file.P("required := validation.Errors{}")
 	for _, field := range publicIn.Fields {
 		if receiveRequired(field) {
-			privateField, err := findPrivateField(field, publicIn, chain)
+			privateField, err := findNextField(field, privateIn)
 			if err != nil {
 				return fmt.Errorf("failed to generate converter function for %s: %w", publicInName, err)
 			}
 
+			varName := "nextIn"
+			if deprecatedField(field) {
+				varName = "privateIn"
+			}
+
 			privateFieldName := privateField.GoName
-			file.P(`required["`, privateFieldName, `"] = validation.Validate(in.`, privateFieldName, `, validation.Required)`)
+			file.P(`required["`, privateFieldName, `"] = validation.Validate(`, varName, `.`, privateFieldName, `, validation.Required)`)
 		}
 	}
 
@@ -851,6 +856,7 @@ func generateConverterToNextIface(file *protogen.GeneratedFile, v interface{}, c
 
 func commonImports(imports ...protogen.GoIdent) []protogen.GoIdent {
 	return append([]protogen.GoIdent{
+		protogen.GoImportPath("fmt").Ident("fmt"),
 		protogen.GoImportPath("context").Ident("context"),
 		protogen.GoImportPath("github.com/go-ozzo/ozzo-validation/v4").Ident("validation"),
 		protogen.GoImportPath("github.com/go-ozzo/ozzo-validation/v4/is").Ident("is"),
@@ -860,7 +866,7 @@ func commonImports(imports ...protogen.GoIdent) []protogen.GoIdent {
 }
 
 func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {
-	refs = append([]string{"is.Int", "validation.Validate"}, refs...)
+	refs = append([]string{"is.Int", "validation.Validate", "fmt.Errorf"}, refs...)
 
 	for _, ref := range refs {
 		file.P("var _ =", ref)
@@ -893,7 +899,9 @@ func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serv
 
 func generatePublicServiceMethod(file *protogen.GeneratedFile, methodName, inName, outName string) {
 	file.P("func (s *Service) ", methodName, "(ctx context.Context, in *publicpb.", inName, ") (*publicpb.", outName, ", error) {")
-	file.P("if err := s.Validate", inName, "(in); err != nil { return nil, err }")
+	file.P("if err := s.Validate", inName, "(in); err != nil {")
+	file.P(`return nil, status.Errorf(codes.InvalidArgument, "%s", err)`)
+	file.P("}")
 	file.P("out, _, err := s.", methodName, "Impl(ctx, in)")
 	file.P("return out, err")
 	file.P("}")
@@ -901,7 +909,9 @@ func generatePublicServiceMethod(file *protogen.GeneratedFile, methodName, inNam
 
 func generatePrivateServiceMethod(file *protogen.GeneratedFile, methodName, inName, outName string) {
 	file.P("func (s *Service) ", methodName, "(ctx context.Context, in *privatepb.", inName, ") (*privatepb.", outName, ", error) {")
-	file.P("if err := s.Validate", inName, "(in); err != nil { return nil, err }")
+	file.P("if err := s.Validate", inName, "(in); err != nil {")
+	file.P(`return nil, status.Errorf(codes.InvalidArgument, "%s", err)`)
+	file.P("}")
 	file.P("return s.Impl.", methodName, "(ctx, in)")
 	file.P("}")
 }
@@ -940,7 +950,9 @@ func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *pr
 	file.P("privateOut, err := s.Private.", privateMethodName, "(ctx, privateIn)")
 	file.P("if err != nil { return nil, nil, err }")
 	file.P("out, err := s.To", deprecatedPrefix, "Public", publicOutName, "(privateOut)")
-	file.P("if err != nil { return nil, nil, err }")
+	file.P("if err != nil {")
+	file.P(`return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)`)
+	file.P("}")
 	file.P("return out, privateOut, nil")
 	file.P("}")
 
@@ -1003,7 +1015,9 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 	file.P("nextOut, privateOut, err := s.Next.", nextMethodName, "Impl(ctx, nextIn, mutators...)")
 	file.P("if err != nil { return nil, nil, err }")
 	file.P("out, err := s.ToPublic", publicOutName, "(nextOut, privateOut)")
-	file.P("if err != nil { return nil, nil, err }")
+	file.P("if err != nil {")
+	file.P(`return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)`)
+	file.P("}")
 	file.P("return out, privateOut, nil")
 	file.P("}")
 
@@ -1114,7 +1128,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 		}
 		file.P(")")
 		file.P("if err != nil {")
-		file.P("return status.Error(codes.InvalidArgument, err.Error())")
+		file.P("return err")
 		file.P("}")
 		file.P("return nil")
 		file.P("}")
