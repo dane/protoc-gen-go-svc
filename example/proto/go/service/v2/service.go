@@ -108,28 +108,26 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
-	ValidatePerson(*publicpb.Person) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateUpdateRequest(*publicpb.UpdateRequest) error
+	ValidatePerson(*publicpb.Person) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
-func (v validator) ValidatePerson(in *publicpb.Person) error {
+func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
 		validation.Field(&in.FullName,
 			validation.Required,
+			validation.Length(4, 0),
 		),
 	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-	return nil
-}
-func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
-	err := validation.ValidateStruct(in)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -156,6 +154,17 @@ func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
 		validation.Field(&in.Person,
 			validation.Required,
 			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
+		),
+	)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return nil
+}
+func (v validator) ValidatePerson(in *publicpb.Person) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.FullName,
+			validation.Required,
 		),
 	)
 	if err != nil {
@@ -195,6 +204,7 @@ type converter struct{}
 func (c converter) Name() string { return ConverterName }
 func (c converter) ToPrivateCreateRequest(in *publicpb.CreateRequest) *privatepb.CreateRequest {
 	var out privatepb.CreateRequest
+	out.Id = in.Id
 	out.FullName = in.FullName
 	out.Age = in.Age
 	out.Employment = c.ToPrivatePerson_Employment(in.Employment)

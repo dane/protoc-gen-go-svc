@@ -40,6 +40,10 @@ type validator struct{}
 func (v validator) Name() string { return ValidatorName }
 func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
 		validation.Field(&in.FirstName,
 			validation.Required,
 			validation.Length(2, 0),
@@ -112,6 +116,7 @@ type converter struct{}
 func (c converter) Name() string { return ConverterName }
 func (c converter) ToNextCreateRequest(in *publicpb.CreateRequest) *nextpb.CreateRequest {
 	var out nextpb.CreateRequest
+	out.Id = in.Id
 	out.Employment = c.ToNextPerson_Employment(in.Employment)
 	return &out
 }
