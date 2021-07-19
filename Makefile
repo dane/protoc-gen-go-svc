@@ -1,8 +1,17 @@
+.PHONY: gen
+gen:
+	protoc \
+		-I $(PWD)/gen/svc \
+		-I /usr/local/include \
+		--go_out=$(shell echo ${GOPATH})/src \
+		--go-grpc_out=$(shell echo ${GOPATH})/src \
+			$(PWD)/gen/svc/annotations.proto
+
 .PHONY: install
-install:
+install: gen
 	go install
 
-.PHONY: build
+.PHONY: build gen
 build:
 	go build ./...
 

@@ -4,7 +4,7 @@ package gen.svc;
 
 import "google/protobuf/descriptor.proto";
 
-option go_package = "github.com/dane/proto-gen-go-svc/gen/svc;svc";
+option go_package = "github.com/dane/protoc-gen-go-svc/gen/svc;svc";
 
 extend google.protobuf.FileOptions {
   string go_package = 1115;
@@ -41,9 +41,10 @@ message MessageAnnotation {
 
 message FieldAnnotation {
   Delegate delegate = 1;
-  Validate validate = 2;
-  Default  default = 3;
-  bool deprecated = 4;
+  FieldReceive receive = 2;
+  Validate validate = 3;
+  Default  default = 4;
+  bool deprecated = 5;
 }
 
 message EnumAnnotation {
@@ -64,12 +65,16 @@ message Receive {
   repeated string names = 2;
 }
 
+message FieldReceive {
+  bool required = 1;
+}
+
 message Validate {
   bool required = 1;
-  int64 min = 2;
-  int64 max = 3;
-  repeated string in = 4;
-  IsType is = 5;
+  Number min = 2;
+  Number max = 3;
+  IsType is = 4;
+  repeated string in = 5;
 
   enum IsType {
     UNSPECIFIED = 0;
@@ -83,6 +88,14 @@ message Default {
   bool bool = 1;
   int64 int64 = 2;
   uint64 uint64 = 3;
-  float float = 4;
+  double double = 4;
   string string = 5;
+}
+
+message Number {
+  oneof value {
+    int64 int64 = 1;
+    double double = 2;
+    uint64 uint64 = 3;
+  }
 }

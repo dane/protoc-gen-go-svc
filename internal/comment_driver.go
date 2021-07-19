@@ -8,25 +8,6 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-type Driver interface {
-	DelegateMethodName(method *protogen.Method) (string, error)
-	DelegateEnumName(enum *protogen.Enum) (string, error)
-	DelegateEnumValueName(value *protogen.EnumValue) (string, error)
-	DelegateMessageName(message *protogen.Message) (string, error)
-	DelegateFieldName(field *protogen.Field) (string, error)
-	DeprecatedField(field *protogen.Field) bool
-	RequiredField(field *protogen.Field) bool
-	DeprecatedMethod(method *protogen.Method) bool
-	ValidateMessage(message *protogen.Message) bool
-	ValidateField(field *protogen.Field) bool
-	ReceiveRequired(field *protogen.Field) bool
-	ReceiveEnumValueNames(value *protogen.EnumValue) []string
-	Is(field *protogen.Field) (string, error)
-	Min(field *protogen.Field) (string, bool, error)
-	Max(field *protogen.Field) (string, bool, error)
-	In(packageName string, field *protogen.Field) ([]string, error)
-}
-
 type commentDriver struct {
 	inputs  map[*protogen.Message]struct{}
 	outputs map[*protogen.Message]struct{}
@@ -112,10 +93,6 @@ func (c commentDriver) ReceiveEnumValueNames(value *protogen.EnumValue) []string
 	return values
 }
 
-func (c commentDriver) required(field *protogen.Field) bool {
-	return c.validations(field.Comments)["required"] == "true"
-}
-
 func (c commentDriver) Min(field *protogen.Field) (string, bool, error) {
 	return c.number(field, "min")
 }
@@ -155,6 +132,23 @@ func (c commentDriver) In(packageName string, field *protogen.Field) ([]string, 
 	}
 
 	return nil, nil
+}
+
+func (c commentDriver) Is(field *protogen.Field) (string, error) {
+	value, ok := c.validations(field.Comments)["is"]
+	if !ok {
+		return "", nil
+	}
+
+	if !c.contains([]string{"email", "uuid", "url"}, value) {
+		return "", fmt.Errorf(`invalid validate "is" value %q`, value)
+	}
+
+	return value, nil
+}
+
+func (c commentDriver) required(field *protogen.Field) bool {
+	return c.validations(field.Comments)["required"] == "true"
 }
 
 func (c commentDriver) builtins(values []string) bool {
@@ -200,19 +194,6 @@ func (c commentDriver) number(field *protogen.Field, key string) (string, bool, 
 
 	fieldName := field.GoName
 	return "", false, fmt.Errorf("invalid %s value %q for field %s", key, value, fieldName)
-}
-
-func (c commentDriver) Is(field *protogen.Field) (string, error) {
-	value, ok := c.validations(field.Comments)["is"]
-	if !ok {
-		return "", nil
-	}
-
-	if !c.contains([]string{"email", "uuid", "url"}, value) {
-		return "", fmt.Errorf(`invalid validate "is" value %q`, value)
-	}
-
-	return value, nil
 }
 
 func (c commentDriver) delegate(commentSet protogen.CommentSet) (string, error) {
