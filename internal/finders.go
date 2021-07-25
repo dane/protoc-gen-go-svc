@@ -108,7 +108,7 @@ func findNextMessage(message *protogen.Message, next *Service) (*protogen.Messag
 }
 
 func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Field, error) {
-	fieldName := field.GoName
+	fieldName := string(field.Desc.Name())
 	name, err := delegateFieldName(field)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find delegate field for %s: %w", fieldName, err)
@@ -119,7 +119,7 @@ func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Fie
 	}
 
 	for _, field := range next.Fields {
-		if name == field.GoName {
+		if name == string(field.Desc.Name()) {
 			return field, nil
 		}
 	}
