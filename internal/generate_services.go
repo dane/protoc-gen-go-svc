@@ -1053,12 +1053,12 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	file.P("type validator struct {}")
 	file.P("func (v validator) Name() string { return ValidatorName }")
 	for _, message := range service.Messages {
-		if !validateMessage(message) {
-			continue
-		}
-
 		messageName := message.GoIdent.GoName
+		logger.Printf("package=%s at=generate-validator-function message=%s", service.GoPackageName, messageName)
 		file.P("func(v validator) Validate", messageName, "(in *", packageName, ".", messageName, ") error {")
+		if _, ok := inputs[message]; !ok {
+			file.P("if in == nil { return nil }")
+		}
 		file.P("err := validation.ValidateStruct(in,")
 		for _, field := range message.Fields {
 			if !validateField(field) {
@@ -1129,7 +1129,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 				}
 			}
 
-			if field.Message != nil && validateMessage(field.Message) {
+			if field.Message != nil {
 				messageName := field.Message.GoIdent.GoName
 				file.P("validation.By(func(interface{}) error { return v.Validate", messageName, "(in.", fieldName, ") }),")
 			}
@@ -1137,11 +1137,35 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 			file.P("),")
 		}
 		file.P(")")
-		file.P("if err != nil {")
-		file.P("return err")
-		file.P("}")
+		file.P("if err != nil { return err }")
 		file.P("return nil")
 		file.P("}")
+
+		for _, oneof := range message.Oneofs {
+			for _, field := range oneof.Fields {
+				typeName := field.GoIdent.GoName
+				fieldName := field.GoName
+				logger.Printf("package=%s at=generate-validator-interface oneof=%s", service.GoPackageName, typeName)
+				file.P("func(v validator) Validate", typeName, "(in *", packageName, ".", typeName, ") error {")
+				file.P("if in == nil { return nil }")
+				file.P("err := validation.ValidateStruct(in,")
+				messageName := field.Message.GoIdent.GoName
+				file.P("validation.Field(&in.", messageName, ",")
+
+				if requiredOneof(oneof) {
+					file.P("validation.Required,")
+				}
+
+				file.P("validation.By(func(v interface{}) error { return v.Validate", messageName, "(in.", fieldName, ") }),")
+
+				file.P("),")
+				file.P(")")
+				file.P("if err != nil { return err }")
+				file.P("return nil")
+				file.P("}")
+
+			}
+		}
 	}
 
 	return nil
