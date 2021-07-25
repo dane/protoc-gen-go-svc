@@ -8,8 +8,11 @@ type Driver interface {
 	DelegateEnumValueName(value *protogen.EnumValue) (string, error)
 	DelegateMessageName(message *protogen.Message) (string, error)
 	DelegateFieldName(field *protogen.Field) (string, error)
+	DelegateOneofName(oneof *protogen.Oneof) (string, error)
+	DeprecatedOneof(oneof *protogen.Oneof) bool
 	DeprecatedField(field *protogen.Field) bool
 	RequiredField(field *protogen.Field) bool
+	RequiredOneof(oneof *protogen.Oneof) bool
 	DeprecatedMethod(method *protogen.Method) bool
 	ValidateMessage(message *protogen.Message) bool
 	ValidateField(field *protogen.Field) bool

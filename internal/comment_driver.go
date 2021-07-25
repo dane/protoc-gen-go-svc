@@ -40,6 +40,14 @@ func (c commentDriver) DelegateFieldName(field *protogen.Field) (string, error) 
 	return c.delegate(field.Comments)
 }
 
+func (c commentDriver) DelegateOneofName(oneof *protogen.Oneof) (string, error) {
+	return c.delegate(oneof.Comments)
+}
+
+func (c commentDriver) DeprecatedOneof(oneof *protogen.Oneof) bool {
+	return c.deprecated(oneof.Comments)
+}
+
 func (c commentDriver) DeprecatedField(field *protogen.Field) bool {
 	return c.deprecated(field.Comments)
 }
@@ -50,6 +58,10 @@ func (c commentDriver) DeprecatedMethod(method *protogen.Method) bool {
 
 func (c commentDriver) RequiredField(field *protogen.Field) bool {
 	return c.required(field)
+}
+
+func (c commentDriver) RequiredOneof(oneof *protogen.Oneof) bool {
+	return c.requiredOneof(oneof)
 }
 
 func (c commentDriver) ValidateMessage(message *protogen.Message) bool {
@@ -149,6 +161,10 @@ func (c commentDriver) Is(field *protogen.Field) (string, error) {
 
 func (c commentDriver) required(field *protogen.Field) bool {
 	return c.validations(field.Comments)["required"] == "true"
+}
+
+func (c commentDriver) requiredOneof(oneof *protogen.Oneof) bool {
+	return c.validations(oneof.Comments)["required"] == "true"
 }
 
 func (c commentDriver) builtins(values []string) bool {

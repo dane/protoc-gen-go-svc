@@ -55,9 +55,21 @@ func (o optionDriver) DelegateFieldName(field *protogen.Field) (string, error) {
 	return annotation.GetDelegate().GetName(), nil
 }
 
+func (o optionDriver) DelegateOneofName(oneof *protogen.Oneof) (string, error) {
+	options := oneof.Desc.Options().(*descriptorpb.OneofOptions)
+	annotation := proto.GetExtension(options, svc.E_Oneof).(*svc.OneofAnnotation)
+	return annotation.GetDelegate().GetName(), nil
+}
+
 func (o optionDriver) DeprecatedField(field *protogen.Field) bool {
 	options := field.Desc.Options().(*descriptorpb.FieldOptions)
 	annotation := proto.GetExtension(options, svc.E_Field).(*svc.FieldAnnotation)
+	return annotation.GetDeprecated()
+}
+
+func (o optionDriver) DeprecatedOneof(oneof *protogen.Oneof) bool {
+	options := oneof.Desc.Options().(*descriptorpb.OneofOptions)
+	annotation := proto.GetExtension(options, svc.E_Oneof).(*svc.OneofAnnotation)
 	return annotation.GetDeprecated()
 }
 
@@ -73,6 +85,12 @@ func (o optionDriver) RequiredField(field *protogen.Field) bool {
 	return annotation.GetValidate().GetRequired()
 }
 
+func (o optionDriver) RequiredOneof(Oneof *protogen.Oneof) bool {
+	options := Oneof.Desc.Options().(*descriptorpb.OneofOptions)
+	annotation := proto.GetExtension(options, svc.E_Oneof).(*svc.OneofAnnotation)
+	return annotation.GetValidate().GetRequired()
+}
+
 func (o optionDriver) ValidateMessage(message *protogen.Message) bool {
 	if _, ok := o.inputs[message]; ok {
 		return true
@@ -81,6 +99,12 @@ func (o optionDriver) ValidateMessage(message *protogen.Message) bool {
 	for _, field := range message.Fields {
 		if o.ValidateField(field) {
 			return true
+		}
+
+		if field.Oneof != nil {
+			for _, field := range field.Oneof.Fields {
+				return o.ValidateMessage(field.Message)
+			}
 		}
 	}
 

@@ -26,6 +26,10 @@ extend google.protobuf.EnumOptions {
   EnumAnnotation enum = 1115;
 }
 
+extend google.protobuf.OneofOptions {
+  OneofAnnotation oneof = 1115;
+}
+
 extend google.protobuf.EnumValueOptions {
   EnumValueAnnotation enum_value = 1115;
 }
@@ -54,6 +58,13 @@ message EnumAnnotation {
 message EnumValueAnnotation {
   Delegate delegate = 1;
   Receive receive = 2;
+}
+
+message OneofAnnotation {
+  Delegate delegate = 1;
+  FieldReceive receive = 2;
+  Validate validate = 3;
+  bool deprecated = 5;
 }
 
 message Delegate {
