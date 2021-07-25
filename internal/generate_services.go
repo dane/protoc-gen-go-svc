@@ -1036,6 +1036,9 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	file.P("type Validator interface {")
 	file.P("Name() string")
 	for _, message := range service.Messages {
+		if _, ok := outputs[message]; ok {
+			continue
+		}
 		messageName := message.GoIdent.GoName
 		logger.Printf("package=%s at=generate-validator-interface message=%s", service.GoPackageName, messageName)
 		file.P("Validate", messageName, "(*", packageName, ".", messageName, ") error")
@@ -1053,15 +1056,24 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	file.P("type validator struct {}")
 	file.P("func (v validator) Name() string { return ValidatorName }")
 	for _, message := range service.Messages {
+		if _, ok := outputs[message]; ok {
+			continue
+		}
+
 		messageName := message.GoIdent.GoName
 		logger.Printf("package=%s at=generate-validator-function message=%s", service.GoPackageName, messageName)
 		file.P("func(v validator) Validate", messageName, "(in *", packageName, ".", messageName, ") error {")
 		if _, ok := inputs[message]; !ok {
 			file.P("if in == nil { return nil }")
 		}
+
 		file.P("err := validation.ValidateStruct(in,")
 		for _, field := range message.Fields {
-			if !validateField(field) {
+			if field.Oneof != nil {
+				continue
+			}
+
+			if field.Message != nil && !isServiceMessage(service, field.Message) {
 				continue
 			}
 
@@ -1136,6 +1148,18 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 
 			file.P("),")
 		}
+
+		for _, oneof := range message.Oneofs {
+			oneofName := oneof.GoName
+			for _, field := range oneof.Fields {
+				messageName := field.GoName
+				fieldName := field.GoIdent.GoName
+				ref := fmt.Sprintf("*%s.%s", packageName, fieldName)
+				file.P("validation.Field(&in.", oneofName, ",")
+				file.P("validation.When(in.Get", messageName, "() != nil, validation.By(func(val interface{}) error { return v.Validate", fieldName, "(val.(", ref, ")) })),")
+				file.P("),")
+			}
+		}
 		file.P(")")
 		file.P("if err != nil { return err }")
 		file.P("return nil")
@@ -1145,7 +1169,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 			for _, field := range oneof.Fields {
 				typeName := field.GoIdent.GoName
 				fieldName := field.GoName
-				logger.Printf("package=%s at=generate-validator-interface oneof=%s", service.GoPackageName, typeName)
+				logger.Printf("package=%s at=generate-validator-function oneof=%s", service.GoPackageName, typeName)
 				file.P("func(v validator) Validate", typeName, "(in *", packageName, ".", typeName, ") error {")
 				file.P("if in == nil { return nil }")
 				file.P("err := validation.ValidateStruct(in,")
@@ -1156,7 +1180,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 					file.P("validation.Required,")
 				}
 
-				file.P("validation.By(func(v interface{}) error { return v.Validate", messageName, "(in.", fieldName, ") }),")
+				file.P("validation.By(func(interface{}) error { return v.Validate", messageName, "(in.", fieldName, ") }),")
 
 				file.P("),")
 				file.P(")")
@@ -1213,4 +1237,8 @@ func fieldMatch(a, b *protogen.Field) bool {
 	}
 
 	return true
+}
+
+func isServiceMessage(service *Service, message *protogen.Message) bool {
+	return service.GoImportPath == message.GoIdent.GoImportPath
 }
