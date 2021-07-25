@@ -26,6 +26,7 @@ message Person {
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
   google.protobuf.Timestamp deleted_at = 9;
+  Hobby hobby = 10 [(gen.svc.field).validate = { required: true }];
 
   enum Employment {
     UNDEFINED = 0;
@@ -33,6 +34,27 @@ message Person {
     PART_TIME = 2;
     UNEMPLOYED = 3;
   }
+}
+
+message Hobby {
+  oneof type {
+    option (gen.svc.oneof).validate = { required: true };
+    Coding coding = 1;
+    Reading reading = 2;
+    Cycling cycling = 3;
+  }
+}
+
+message Coding {
+  string language = 1;
+}
+
+message Reading {
+  string genre = 1;
+}
+
+message Cycling {
+  string style = 1;
 }
 
 message CreateRequest {
