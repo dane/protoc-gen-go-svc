@@ -1036,12 +1036,17 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	file.P("type Validator interface {")
 	file.P("Name() string")
 	for _, message := range service.Messages {
-		if !validateMessage(message) {
-			continue
-		}
-
 		messageName := message.GoIdent.GoName
+		logger.Printf("package=%s at=generate-validator-interface message=%s", service.GoPackageName, messageName)
 		file.P("Validate", messageName, "(*", packageName, ".", messageName, ") error")
+
+		for _, oneof := range message.Oneofs {
+			for _, field := range oneof.Fields {
+				fieldName := field.GoIdent.GoName
+				logger.Printf("package=%s at=generate-validator-interface oneof=%s", service.GoPackageName, fieldName)
+				file.P("Validate", fieldName, "(*", packageName, ".", fieldName, ") error")
+			}
+		}
 	}
 	file.P("}")
 
