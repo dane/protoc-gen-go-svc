@@ -164,7 +164,9 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 	}
 	file.P(")")
 
+	logger.Printf("package=%s at=import-usage", service.GoPackageName)
 	generateImportUsage(file)
+	logger.Printf("package=%s at=service-struct", service.GoPackageName)
 	generateServiceStruct(file,
 		"Converter",
 		"Private *private.Service",
@@ -172,14 +174,17 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 		fmt.Sprintf("publicpb.%sServer", service.GoName),
 	)
 
+	logger.Printf("package=%s at=generate-validators", service.GoPackageName)
 	if err := generateServiceValidators(file, "publicpb", service); err != nil {
 		return err
 	}
 
+	logger.Printf("package=%s at=generate-converters", service.GoPackageName)
 	if err := generateConverters(file, service, chain, PublicService); err != nil {
 		return err
 	}
 
+	logger.Printf("package=%s at=generate-methods", service.GoPackageName)
 	generateServiceMethods(file, service, PublicService)
 
 	for _, method := range service.Methods {
