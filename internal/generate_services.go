@@ -549,6 +549,10 @@ func generateConverterMessageFunc(file *protogen.GeneratedFile, dst, packageName
 			continue
 		}
 
+		if field.Oneof != nil {
+			continue
+		}
+
 		nextField, err := findNextField(field, nextIn)
 		if err != nil {
 			return fmt.Errorf("failed to generate converter function for %s: %w", publicInName, err)
@@ -568,6 +572,36 @@ func generateConverterMessageFunc(file *protogen.GeneratedFile, dst, packageName
 			}
 			file.P("out.", nextFieldName, "= c.To", dst, name, "(in.", publicFieldName, ")")
 		}
+	}
+
+	for _, oneof := range publicIn.Oneofs {
+		nextOneof, err := findNextOneof(oneof, nextIn)
+		if err != nil {
+			return err
+		}
+
+		fieldName := oneof.GoName
+		nextFieldName := nextOneof.GoName
+
+		file.P("switch in.", fieldName, ".(type) {")
+		for _, field := range oneof.Fields {
+			nextField, err := findNextOneofField(field, nextOneof)
+			if err != nil {
+				return err
+			}
+
+			typeName := field.GoIdent.GoName
+			nextTypeName := nextField.GoIdent.GoName
+
+			messageName := field.GoName
+			nextMessageName := nextField.GoName
+
+			file.P("case *publicpb.", typeName, ":")
+			file.P("out.", nextFieldName, "= &", packageName, ".", nextTypeName, "{")
+			file.P(nextMessageName, ": c.To", dst, nextMessageName, "(in.Get", messageName, "()),")
+			file.P("}")
+		}
+		file.P("}")
 	}
 	file.P("return &out")
 	file.P("}")
