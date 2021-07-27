@@ -268,6 +268,50 @@ func findPrivateReceiveEnumValues(value *protogen.EnumValue, enum *protogen.Enum
 	return values, nil
 }
 
+func findPrivateOneof(oneof *protogen.Oneof, message *protogen.Message, chain []*Service) (*protogen.Oneof, error) {
+	targetMessage := message
+	targetOneof := oneof
+
+	var err error
+	for _, next := range chain {
+		targetMessage, err = findNextMessage(targetMessage, next)
+		if err != nil {
+			return nil, err
+		}
+
+		targetOneof, err = findNextOneof(targetOneof, targetMessage)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetOneof, nil
+}
+
+func findPrivateOneofField(field *protogen.Field, oneof *protogen.Oneof, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
+	targetMessage := message
+	targetOneof := oneof
+	targetField := field
+
+	var err error
+	for _, next := range chain {
+		targetMessage, err = findNextMessage(targetMessage, next)
+		if err != nil {
+			return nil, err
+		}
+
+		targetOneof, err = findNextOneof(targetOneof, targetMessage)
+		if err != nil {
+			return nil, err
+		}
+
+		targetField, err = findNextOneofField(targetField, targetOneof)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetField, nil
+}
+
 func findPrivateField(field *protogen.Field, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
 	targetMessage := message
 	targetField := field

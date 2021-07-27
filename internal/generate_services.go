@@ -641,6 +641,11 @@ func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publ
 	file.P("var err error")
 
 	for _, field := range publicIn.Fields {
+		if field.Oneof != nil {
+			// TODO: Add oneof support
+			continue
+		}
+
 		if err := generateConverterFieldToPublicFromPrivate(file, "in", field, privateIn, isDeprecated, service); err != nil {
 			return err
 		}
@@ -660,6 +665,11 @@ func generateConverterFieldToPublicFromPrivate(file *protogen.GeneratedFile, pri
 
 	privateFieldName := privateField.GoName
 
+	var deprecatedPrefix string
+	if isDeprecated {
+		deprecatedPrefix = "Deprecated"
+	}
+
 	if fieldMatch(field, privateField) {
 		file.P("out.", publicFieldName, "=", privateVarName, ".", privateFieldName)
 	} else if field.Message != nil || field.Enum != nil {
@@ -668,11 +678,6 @@ func generateConverterFieldToPublicFromPrivate(file *protogen.GeneratedFile, pri
 			name = field.Message.GoIdent.GoName
 		} else {
 			name = field.Enum.GoIdent.GoName
-		}
-
-		var deprecatedPrefix string
-		if isDeprecated {
-			deprecatedPrefix = "Deprecated"
 		}
 
 		if field.Desc.IsList() {
@@ -772,7 +777,12 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 	file.P("var err error")
 
 	for _, field := range publicIn.Fields {
+		if field.Oneof != nil {
+			continue
+		}
+
 		if deprecatedField(field) {
+			// TODO: Investigate why the isDeprecated parameter is false
 			if err := generateConverterFieldToPublicFromPrivate(file, "privateIn", field, privateIn, false, service); err != nil {
 				return err
 			}
@@ -783,6 +793,48 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 			return err
 		}
 	}
+
+	for _, oneof := range publicIn.Oneofs {
+		if deprecatedOneof(oneof) {
+			continue
+		}
+
+		// convert to public from next
+		nextOneof, err := findNextOneof(oneof, nextIn)
+		if err != nil {
+			return err
+		}
+
+		fieldName := oneof.GoName
+
+		file.P("switch nextIn.", fieldName, ".(type) {")
+		for _, field := range oneof.Fields {
+			nextField, err := findNextOneofField(field, nextOneof)
+			if err != nil {
+				return err
+			}
+
+			privateField, err := findPrivateOneofField(field, oneof, publicIn, chain)
+			if err != nil {
+				return err
+			}
+
+			typeName := field.GoIdent.GoName
+			nextTypeName := nextField.GoIdent.GoName
+
+			messageName := field.GoName
+			nextMessageName := nextField.GoName
+			privateMessageName := privateField.GoName
+			dst := "Public"
+
+			file.P("case *nextpb.", nextTypeName, ":")
+			file.P("var value publicpb.", typeName)
+			file.P("value.", messageName, ", err = ", "c.To", dst, messageName, "(nextIn.Get", nextMessageName, "(), privateIn.Get", privateMessageName, "())")
+			file.P("out.", fieldName, "= &value")
+		}
+		file.P("}")
+	}
+
 	file.P("return &out, err")
 	file.P("}")
 
