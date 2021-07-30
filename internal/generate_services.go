@@ -543,6 +543,7 @@ func generateConverterMessageFunc(file *protogen.GeneratedFile, dst, packageName
 	nextInName := nextIn.GoIdent.GoName
 
 	file.P("func (c converter) To", dst, nextInName, "(in *publicpb.", publicInName, ") *", packageName, ".", nextInName, " {")
+	file.P("if in == nil { return nil }")
 	file.P("var out ", packageName, ".", nextInName)
 	for _, field := range publicIn.Fields {
 		if deprecatedField(field) {
@@ -623,6 +624,7 @@ func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publ
 	} else {
 		file.P("func (c converter) ToPublic", publicInName, "(in *privatepb.", privateInName, ") (*publicpb.", publicInName, ", error) {")
 	}
+	file.P("if in == nil { return nil, nil }")
 	file.P("var required validation.Errors")
 	for _, field := range publicIn.Fields {
 		if receiveRequired(field) {
@@ -642,7 +644,6 @@ func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publ
 
 	for _, field := range publicIn.Fields {
 		if field.Oneof != nil {
-			// TODO: Add oneof support
 			continue
 		}
 
@@ -650,6 +651,42 @@ func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publ
 			return err
 		}
 	}
+
+	var deprecatedPrefix string
+	if isDeprecated {
+		deprecatedPrefix = "Deprecated"
+	}
+
+	for _, oneof := range publicIn.Oneofs {
+		nextOneof, err := findNextOneof(oneof, privateIn)
+		if err != nil {
+			return err
+		}
+
+		fieldName := oneof.GoName
+
+		file.P("switch in.", fieldName, ".(type) {")
+		for _, field := range oneof.Fields {
+			nextField, err := findNextOneofField(field, nextOneof)
+			if err != nil {
+				return err
+			}
+
+			typeName := field.GoIdent.GoName
+			nextTypeName := nextField.GoIdent.GoName
+
+			messageName := field.GoName
+			nextMessageName := nextField.GoName
+			dst := "Public"
+
+			file.P("case *privatepb.", nextTypeName, ":")
+			file.P("var value publicpb.", typeName)
+			file.P("value.", messageName, ", err = ", "c.To", deprecatedPrefix, dst, messageName, "(in.Get", nextMessageName, "())")
+			file.P("if err == nil { out.", fieldName, "= &value }")
+		}
+		file.P("}")
+	}
+
 	file.P("return &out, err")
 	file.P("}")
 
@@ -754,6 +791,7 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 	nextInName := nextIn.GoIdent.GoName
 
 	file.P("func (c converter) ToPublic", publicInName, "(nextIn *nextpb.", nextInName, ", privateIn *privatepb.", privateInName, ") (*publicpb.", publicInName, ", error) {")
+	file.P("if nextIn == nil || privateIn == nil { return nil, nil }")
 	file.P("required := validation.Errors{}")
 	for _, field := range publicIn.Fields {
 		if receiveRequired(field) {
@@ -796,6 +834,35 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 
 	for _, oneof := range publicIn.Oneofs {
 		if deprecatedOneof(oneof) {
+			nextOneof, err := findNextOneof(oneof, privateIn)
+			if err != nil {
+				return err
+			}
+
+			fieldName := oneof.GoName
+
+			file.P("switch in.", fieldName, ".(type) {")
+			for _, field := range oneof.Fields {
+				nextField, err := findNextOneofField(field, nextOneof)
+				if err != nil {
+					return err
+				}
+
+				typeName := field.GoIdent.GoName
+				nextTypeName := nextField.GoIdent.GoName
+
+				messageName := field.GoName
+				nextMessageName := nextField.GoName
+				dst := "Public"
+
+				file.P("case *privatepb.", nextTypeName, ":")
+				file.P("out.", fieldName, "= &publicpb.", typeName, "{")
+				file.P(messageName, ": c.To", dst, messageName, "(in.Get", nextMessageName, "()),")
+				file.P("}")
+			}
+			file.P("}")
+
+			// convert to public from private
 			continue
 		}
 
