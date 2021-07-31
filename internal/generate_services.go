@@ -820,8 +820,7 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 		}
 
 		if deprecatedField(field) {
-			// TODO: Investigate why the isDeprecated parameter is false
-			if err := generateConverterFieldToPublicFromPrivate(file, "privateIn", field, privateIn, false, service); err != nil {
+			if err := generateConverterFieldToPublicFromPrivate(file, "privateIn", field, privateIn, true, service); err != nil {
 				return err
 			}
 			continue
