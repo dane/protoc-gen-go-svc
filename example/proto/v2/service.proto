@@ -56,10 +56,11 @@ message Cycling {
 }
 
 message CreateRequest {
-  string id = 1 [(gen.svc.field).validate = { required: true, is: UUID }];
+  string id = 1        [(gen.svc.field).validate = { required: true, is: UUID }];
   string full_name = 2 [(gen.svc.field).validate = { required: true, min: { int64: 4 } }];
-  int64 age = 3 [(gen.svc.field).default = { int64: 0 }];
+  int64 age = 3        [(gen.svc.field).default = { int64: 0 }];
   Person.Employment employment = 4;
+  Hobby hobby = 5      [(gen.svc.field).validate = { required: true }];
 }
 
 message CreateResponse {

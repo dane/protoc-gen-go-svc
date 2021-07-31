@@ -76,6 +76,7 @@ message CreateRequest {
     (gen.svc.field).validate = { required: true, min: { int64: 2 } }
   ];
   Person.Employment employment = 4;
+  Hobby hobby = 5 [(gen.svc.field).validate = { required: true }];
 }
 
 message CreateResponse {

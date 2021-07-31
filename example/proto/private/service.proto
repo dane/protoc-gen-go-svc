@@ -28,6 +28,7 @@ message Person {
   google.protobuf.Timestamp deleted_at = 9;
   Hobby hobby = 10 [(gen.svc.field).validate = { required: true }];
 
+
   enum Employment {
     UNDEFINED = 0;
     FULL_TIME = 1;
@@ -64,6 +65,8 @@ message CreateRequest {
   string full_name = 4  [(gen.svc.field).validate = { required: true, min: { int64: 5 } }];
   int64 age = 5         [(gen.svc.field).validate = { required: true, min: { int64: 16 } }];
   Person.Employment employment = 6 [(gen.svc.field).validate = { required: true, in: ["FULL_TIME", "PART_TIME", "UNEMPLOYED"] }];
+  Hobby hobby = 7       [(gen.svc.field).validate = { required: true }];
+
 }
 
 message CreateResponse {
