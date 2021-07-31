@@ -219,12 +219,18 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 
 		isDeprecated := deprecatedMethod(method)
 		if isDeprecated || serviceType == LatestPublicService {
+			logger.Printf("package=%s at=generate-converter-interface message=%s deprecated=%v", service.GoPackageName, publicIn.GoIdent.GoName, isDeprecated)
+			logger.Printf("package=%s at=generate-converter-interface message=%s deprecated=%v", service.GoPackageName, publicOut.GoIdent.GoName, isDeprecated)
+
 			if err := generateConverterToPrivateIface(file, publicIn, publicOut, isDeprecated, private); err != nil {
 				return err
 			}
 
 			continue
 		}
+
+		logger.Printf("package=%s at=generate-converter-interface message=%s", service.GoPackageName, publicIn.GoIdent.GoName)
+		logger.Printf("package=%s at=generate-converter-interface message=%s", service.GoPackageName, publicOut.GoIdent.GoName)
 
 		privateOut, err := findPrivateMessage(publicOut, chain)
 		if err != nil {
@@ -258,6 +264,8 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 			continue
 		}
 
+		logger.Printf("package=%s at=generate-converter-interface message=%s", service.GoPackageName, message.GoIdent.GoName)
+
 		if serviceType == LatestPublicService {
 			if err := generateConverterToPrivateIface(file, message, message, false, private); err != nil {
 				return err
@@ -271,6 +279,7 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 	}
 
 	for _, enum := range service.Enums {
+		logger.Printf("package=%s at=generate-converter-interface enum=%s", service.GoPackageName, enum.GoIdent.GoName)
 		if serviceType == LatestPublicService {
 			if err := generateConverterToPrivateIface(file, enum, enum, false, private); err != nil {
 				return err
@@ -284,12 +293,14 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 	}
 
 	for _, message := range service.DeprecatedMessages {
+		logger.Printf("package=%s at=generate-converter-interface message=%s deprecated=%v", service.GoPackageName, message.GoIdent.GoName, true)
 		if err := generateConverterDeprecatedToPrivateIface(file, message, private); err != nil {
 			return err
 		}
 	}
 
 	for _, enum := range service.DeprecatedEnums {
+		logger.Printf("package=%s at=generate-converter-interface enum=%s deprecated=%v", service.GoPackageName, enum.GoIdent.GoName, true)
 		if err := generateConverterDeprecatedToPrivateIface(file, enum, private); err != nil {
 			return err
 		}
@@ -306,6 +317,9 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 
 		isDeprecated := deprecatedMethod(method)
 		if isDeprecated || serviceType == LatestPublicService {
+			logger.Printf("package=%s at=generate-converter-function message=%s deprecated=%v", service.GoPackageName, publicIn.GoIdent.GoName, isDeprecated)
+			logger.Printf("package=%s at=generate-converter-function message=%s deprecated=%v", service.GoPackageName, publicOut.GoIdent.GoName, isDeprecated)
+
 			if err := generateConverterToPrivateFunc(file, publicIn, private); err != nil {
 				return err
 			}
@@ -320,10 +334,12 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 			continue
 		}
 
+		logger.Printf("package=%s at=generate-converter-function message=%s", service.GoPackageName, publicIn.GoIdent.GoName)
 		if err := generateConverterToNextFunc(file, publicIn, next); err != nil {
 			return err
 		}
 
+		logger.Printf("package=%s at=generate-converter-function message=%s", service.GoPackageName, publicOut.GoIdent.GoName)
 		if err := generateConverterToPublicFuncFromNext(file, publicOut, service, chain); err != nil {
 			return err
 		}
@@ -336,7 +352,10 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 			continue
 		}
 
+		logger.Printf("package=%s at=generate-converter-function message=%s", service.GoPackageName, message.GoIdent.GoName)
+
 		if serviceType == LatestPublicService {
+			logger.Printf("package=%s at=generate-converter-function message=%s from=%s", service.GoPackageName, message.GoIdent.GoName, private.GoPackageName)
 			if err := generateConverterToPrivateFunc(file, message, private); err != nil {
 				return err
 			}
@@ -347,16 +366,19 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 			continue
 		}
 
+		logger.Printf("package=%s at=generate-converter-function message=%s from=%s dst=%s", service.GoPackageName, message.GoIdent.GoName, next.GoPackageName, "ToNext")
 		if err := generateConverterToNextFunc(file, message, next); err != nil {
 			return err
 		}
 
+		logger.Printf("package=%s at=generate-converter-function message=%s from=%s dst=%s", service.GoPackageName, message.GoIdent.GoName, next.GoPackageName, "ToPublic")
 		if err := generateConverterToPublicFuncFromNext(file, message, service, chain); err != nil {
 			return err
 		}
 	}
 
 	for _, enum := range service.Enums {
+		logger.Printf("package=%s at=generate-converter-function enum=%s", service.GoPackageName, enum.GoIdent.GoName)
 		if serviceType == LatestPublicService {
 			if err := generateConverterToPrivateEnum(file, enum, private); err != nil {
 				return err
@@ -378,12 +400,14 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 	}
 
 	for _, message := range service.DeprecatedMessages {
+		logger.Printf("package=%s at=generate-converter-function message=%s deprecated=%v", service.GoPackageName, message.GoIdent.GoName, true)
 		if err := generateConverterToPublicFromPrivateFunc(file, message, true, service, private); err != nil {
 			return err
 		}
 	}
 
 	for _, enum := range service.DeprecatedEnums {
+		logger.Printf("package=%s at=generate-converter-function enum=%s deprecated=%v", service.GoPackageName, enum.GoIdent.GoName, true)
 		if err := generateConverterToDeprecatedPublicEnum(file, enum, chain); err != nil {
 			return err
 		}
@@ -793,27 +817,42 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 	file.P("func (c converter) ToPublic", publicInName, "(nextIn *nextpb.", nextInName, ", privateIn *privatepb.", privateInName, ") (*publicpb.", publicInName, ", error) {")
 	file.P("if nextIn == nil || privateIn == nil { return nil, nil }")
 	file.P("required := validation.Errors{}")
+
+	logger.Printf("package=%s at=generate-converter-function-validator message=%s", service.GoPackageName, publicInName)
 	for _, field := range publicIn.Fields {
-		if receiveRequired(field) {
-			privateField, err := findNextField(field, privateIn)
-			if err != nil {
-				return fmt.Errorf("failed to generate converter function for %s: %w", publicInName, err)
-			}
-
-			varName := "nextIn"
-			if deprecatedField(field) {
-				varName = "privateIn"
-			}
-
-			privateFieldName := privateField.GoName
-			file.P(`required["`, privateFieldName, `"] = validation.Validate(`, varName, `.`, privateFieldName, `, validation.Required)`)
+		if !receiveRequired(field) {
+			continue
 		}
+
+		var varName string
+		var nextField *protogen.Field
+		var err error
+		if deprecatedField(field) {
+			logger.Printf("package=%s at=generate-converter-function-validator message=%s field=%s deprecated=%v", service.GoPackageName, publicInName, field.GoName, true)
+			varName = "privateIn"
+			nextField, err = findNextField(field, privateIn)
+			if err != nil {
+				return err
+			}
+		} else {
+			logger.Printf("package=%s at=generate-converter-function-validator message=%s field=%s deprecated=%v", service.GoPackageName, publicInName, field.GoName, false)
+			varName = "nextIn"
+			nextField, err = findNextField(field, nextIn)
+			if err != nil {
+				return err
+			}
+		}
+
+		fieldName := field.GoName
+		nextFieldName := nextField.GoName
+		file.P(`required["`, fieldName, `"] = validation.Validate(`, varName, `.`, nextFieldName, `, validation.Required)`)
 	}
 
 	file.P("if err := required.Filter(); err != nil { return nil, err }")
 	file.P("var out publicpb.", publicInName)
 	file.P("var err error")
 
+	logger.Printf("package=%s at=generate-converter-function-assignment message=%s", service.GoPackageName, publicInName)
 	for _, field := range publicIn.Fields {
 		if field.Oneof != nil {
 			continue
@@ -861,7 +900,6 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 			}
 			file.P("}")
 
-			// convert to public from private
 			continue
 		}
 
