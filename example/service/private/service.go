@@ -28,6 +28,7 @@ func (s *Service) Create(ctx context.Context, req *privatepb.CreateRequest) (*pr
 		FullName:   req.FullName,
 		Age:        req.Age,
 		Employment: req.Employment,
+		Hobby:      req.Hobby,
 		CreatedAt:  timestamppb.Now(),
 		UpdatedAt:  timestamppb.Now(),
 	}

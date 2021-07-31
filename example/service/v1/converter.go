@@ -18,5 +18,6 @@ func (c Converter) ToNextCreateRequest(req *publicpb.CreateRequest) *nextpb.Crea
 		Age:        16,
 		FullName:   fmt.Sprintf("%s %s", req.FirstName, req.LastName),
 		Employment: c.ToNextPerson_Employment(req.Employment),
+		Hobby:      c.ToNextHobby(req.Hobby),
 	}
 }
