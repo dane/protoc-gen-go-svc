@@ -110,35 +110,36 @@ func NewValidator() Validator { return validator{} }
 
 type Validator interface {
 	Name() string
-	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 	ValidatePerson(*publicpb.Person) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
+	ValidateCycling(*publicpb.Cycling) error
 	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateUpdateRequest(*publicpb.UpdateRequest) error
+	ValidateHobby(*publicpb.Hobby) error
+	ValidateHobby_Coding(*publicpb.Hobby_Coding) error
+	ValidateHobby_Reading(*publicpb.Hobby_Reading) error
+	ValidateHobby_Cycling(*publicpb.Hobby_Cycling) error
+	ValidateCoding(*publicpb.Coding) error
+	ValidateReading(*publicpb.Reading) error
 }
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
-func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-		validation.Field(&in.Person,
-			validation.Required,
-			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
-		),
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 func (v validator) ValidatePerson(in *publicpb.Person) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id),
 		validation.Field(&in.FullName,
 			validation.Required,
+		),
+		validation.Field(&in.Age),
+		validation.Field(&in.Employment),
+		validation.Field(&in.Hobby,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidateHobby(in.Hobby) }),
 		),
 	)
 	if err != nil {
@@ -156,6 +157,24 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 			validation.Required,
 			validation.Length(4, 0),
 		),
+		validation.Field(&in.Age),
+		validation.Field(&in.Employment),
+		validation.Field(&in.Hobby,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidateHobby(in.Hobby) }),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateCycling(in *publicpb.Cycling) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Style),
 	)
 	if err != nil {
 		return err
@@ -175,7 +194,114 @@ func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
-	err := validation.ValidateStruct(in)
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+		validation.Field(&in.Person,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidatePerson(in.Person) }),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateHobby(in *publicpb.Hobby) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Type,
+			validation.When(in.GetCoding() != nil, validation.By(func(val interface{}) error { return v.ValidateHobby_Coding(val.(*publicpb.Hobby_Coding)) })),
+		),
+		validation.Field(&in.Type,
+			validation.When(in.GetReading() != nil, validation.By(func(val interface{}) error { return v.ValidateHobby_Reading(val.(*publicpb.Hobby_Reading)) })),
+		),
+		validation.Field(&in.Type,
+			validation.When(in.GetCycling() != nil, validation.By(func(val interface{}) error { return v.ValidateHobby_Cycling(val.(*publicpb.Hobby_Cycling)) })),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateHobby_Coding(in *publicpb.Hobby_Coding) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Coding,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidateCoding(in.Coding) }),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateHobby_Reading(in *publicpb.Hobby_Reading) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Reading,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidateReading(in.Reading) }),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateHobby_Cycling(in *publicpb.Hobby_Cycling) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Cycling,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidateCycling(in.Cycling) }),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateCoding(in *publicpb.Coding) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Language),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateReading(in *publicpb.Reading) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Genre),
+	)
 	if err != nil {
 		return err
 	}
@@ -198,6 +324,14 @@ type Converter interface {
 	ToPublicUpdateResponse(*privatepb.UpdateResponse) (*publicpb.UpdateResponse, error)
 	ToPrivatePerson(*publicpb.Person) *privatepb.Person
 	ToPublicPerson(*privatepb.Person) (*publicpb.Person, error)
+	ToPrivateCycling(*publicpb.Cycling) *privatepb.Cycling
+	ToPublicCycling(*privatepb.Cycling) (*publicpb.Cycling, error)
+	ToPrivateHobby(*publicpb.Hobby) *privatepb.Hobby
+	ToPublicHobby(*privatepb.Hobby) (*publicpb.Hobby, error)
+	ToPrivateCoding(*publicpb.Coding) *privatepb.Coding
+	ToPublicCoding(*privatepb.Coding) (*publicpb.Coding, error)
+	ToPrivateReading(*publicpb.Reading) *privatepb.Reading
+	ToPublicReading(*privatepb.Reading) (*publicpb.Reading, error)
 	ToPrivatePerson_Employment(publicpb.Person_Employment) privatepb.Person_Employment
 	ToPublicPerson_Employment(privatepb.Person_Employment) (publicpb.Person_Employment, error)
 }
@@ -205,14 +339,21 @@ type converter struct{}
 
 func (c converter) Name() string { return ConverterName }
 func (c converter) ToPrivateCreateRequest(in *publicpb.CreateRequest) *privatepb.CreateRequest {
+	if in == nil {
+		return nil
+	}
 	var out privatepb.CreateRequest
 	out.Id = in.Id
 	out.FullName = in.FullName
 	out.Age = in.Age
 	out.Employment = c.ToPrivatePerson_Employment(in.Employment)
+	out.Hobby = c.ToPrivateHobby(in.Hobby)
 	return &out
 }
 func (c converter) ToPublicCreateResponse(in *privatepb.CreateResponse) (*publicpb.CreateResponse, error) {
+	if in == nil {
+		return nil, nil
+	}
 	var required validation.Errors
 	if err := required.Filter(); err != nil {
 		return nil, err
@@ -226,11 +367,17 @@ func (c converter) ToPublicCreateResponse(in *privatepb.CreateResponse) (*public
 	return &out, err
 }
 func (c converter) ToPrivateFetchRequest(in *publicpb.GetRequest) *privatepb.FetchRequest {
+	if in == nil {
+		return nil
+	}
 	var out privatepb.FetchRequest
 	out.Id = in.Id
 	return &out
 }
 func (c converter) ToPublicGetResponse(in *privatepb.FetchResponse) (*publicpb.GetResponse, error) {
+	if in == nil {
+		return nil, nil
+	}
 	var required validation.Errors
 	if err := required.Filter(); err != nil {
 		return nil, err
@@ -244,11 +391,17 @@ func (c converter) ToPublicGetResponse(in *privatepb.FetchResponse) (*publicpb.G
 	return &out, err
 }
 func (c converter) ToPrivateDeleteRequest(in *publicpb.DeleteRequest) *privatepb.DeleteRequest {
+	if in == nil {
+		return nil
+	}
 	var out privatepb.DeleteRequest
 	out.Id = in.Id
 	return &out
 }
 func (c converter) ToPublicDeleteResponse(in *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error) {
+	if in == nil {
+		return nil, nil
+	}
 	var required validation.Errors
 	if err := required.Filter(); err != nil {
 		return nil, err
@@ -258,12 +411,18 @@ func (c converter) ToPublicDeleteResponse(in *privatepb.DeleteResponse) (*public
 	return &out, err
 }
 func (c converter) ToPrivateUpdateRequest(in *publicpb.UpdateRequest) *privatepb.UpdateRequest {
+	if in == nil {
+		return nil
+	}
 	var out privatepb.UpdateRequest
 	out.Id = in.Id
 	out.Person = c.ToPrivatePerson(in.Person)
 	return &out
 }
 func (c converter) ToPublicUpdateResponse(in *privatepb.UpdateResponse) (*publicpb.UpdateResponse, error) {
+	if in == nil {
+		return nil, nil
+	}
 	var required validation.Errors
 	if err := required.Filter(); err != nil {
 		return nil, err
@@ -277,6 +436,9 @@ func (c converter) ToPublicUpdateResponse(in *privatepb.UpdateResponse) (*public
 	return &out, err
 }
 func (c converter) ToPrivatePerson(in *publicpb.Person) *privatepb.Person {
+	if in == nil {
+		return nil
+	}
 	var out privatepb.Person
 	out.Id = in.Id
 	out.FullName = in.FullName
@@ -284,9 +446,13 @@ func (c converter) ToPrivatePerson(in *publicpb.Person) *privatepb.Person {
 	out.Employment = c.ToPrivatePerson_Employment(in.Employment)
 	out.CreatedAt = in.CreatedAt
 	out.UpdatedAt = in.UpdatedAt
+	out.Hobby = c.ToPrivateHobby(in.Hobby)
 	return &out
 }
 func (c converter) ToPublicPerson(in *privatepb.Person) (*publicpb.Person, error) {
+	if in == nil {
+		return nil, nil
+	}
 	var required validation.Errors
 	if err := required.Filter(); err != nil {
 		return nil, err
@@ -302,6 +468,126 @@ func (c converter) ToPublicPerson(in *privatepb.Person) (*publicpb.Person, error
 	}
 	out.CreatedAt = in.CreatedAt
 	out.UpdatedAt = in.UpdatedAt
+	out.Hobby, err = c.ToPublicHobby(in.Hobby)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+func (c converter) ToPrivateCycling(in *publicpb.Cycling) *privatepb.Cycling {
+	if in == nil {
+		return nil
+	}
+	var out privatepb.Cycling
+	out.Style = in.Style
+	return &out
+}
+func (c converter) ToPublicCycling(in *privatepb.Cycling) (*publicpb.Cycling, error) {
+	if in == nil {
+		return nil, nil
+	}
+	var required validation.Errors
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.Cycling
+	var err error
+	out.Style = in.Style
+	return &out, err
+}
+func (c converter) ToPrivateHobby(in *publicpb.Hobby) *privatepb.Hobby {
+	if in == nil {
+		return nil
+	}
+	var out privatepb.Hobby
+	switch in.Type.(type) {
+	case *publicpb.Hobby_Coding:
+		out.Type = &privatepb.Hobby_Coding{
+			Coding: c.ToPrivateCoding(in.GetCoding()),
+		}
+	case *publicpb.Hobby_Reading:
+		out.Type = &privatepb.Hobby_Reading{
+			Reading: c.ToPrivateReading(in.GetReading()),
+		}
+	case *publicpb.Hobby_Cycling:
+		out.Type = &privatepb.Hobby_Cycling{
+			Cycling: c.ToPrivateCycling(in.GetCycling()),
+		}
+	}
+	return &out
+}
+func (c converter) ToPublicHobby(in *privatepb.Hobby) (*publicpb.Hobby, error) {
+	if in == nil {
+		return nil, nil
+	}
+	var required validation.Errors
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.Hobby
+	var err error
+	switch in.Type.(type) {
+	case *privatepb.Hobby_Coding:
+		var value publicpb.Hobby_Coding
+		value.Coding, err = c.ToPublicCoding(in.GetCoding())
+		if err == nil {
+			out.Type = &value
+		}
+	case *privatepb.Hobby_Reading:
+		var value publicpb.Hobby_Reading
+		value.Reading, err = c.ToPublicReading(in.GetReading())
+		if err == nil {
+			out.Type = &value
+		}
+	case *privatepb.Hobby_Cycling:
+		var value publicpb.Hobby_Cycling
+		value.Cycling, err = c.ToPublicCycling(in.GetCycling())
+		if err == nil {
+			out.Type = &value
+		}
+	}
+	return &out, err
+}
+func (c converter) ToPrivateCoding(in *publicpb.Coding) *privatepb.Coding {
+	if in == nil {
+		return nil
+	}
+	var out privatepb.Coding
+	out.Language = in.Language
+	return &out
+}
+func (c converter) ToPublicCoding(in *privatepb.Coding) (*publicpb.Coding, error) {
+	if in == nil {
+		return nil, nil
+	}
+	var required validation.Errors
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.Coding
+	var err error
+	out.Language = in.Language
+	return &out, err
+}
+func (c converter) ToPrivateReading(in *publicpb.Reading) *privatepb.Reading {
+	if in == nil {
+		return nil
+	}
+	var out privatepb.Reading
+	out.Genre = in.Genre
+	return &out
+}
+func (c converter) ToPublicReading(in *privatepb.Reading) (*publicpb.Reading, error) {
+	if in == nil {
+		return nil, nil
+	}
+	var required validation.Errors
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.Reading
+	var err error
+	out.Genre = in.Genre
 	return &out, err
 }
 func (c converter) ToPrivatePerson_Employment(in publicpb.Person_Employment) privatepb.Person_Employment {

@@ -51,6 +51,11 @@ func TestExample(t *testing.T) {
 		cmpopts.IgnoreFields(v1pb.Person{}, "CreatedAt", "UpdatedAt"),
 		cmpopts.IgnoreFields(v2pb.Person{}, "CreatedAt", "UpdatedAt"),
 		cmpopts.IgnoreUnexported(v1pb.Person{}, v2pb.Person{}),
+		cmpopts.IgnoreUnexported(v1pb.Hobby{}, v2pb.Hobby{}),
+		cmpopts.IgnoreUnexported(v1pb.Hobby_Coding{}, v2pb.Hobby_Coding{}),
+		cmpopts.IgnoreUnexported(v1pb.Hobby_Reading{}, v2pb.Hobby_Reading{}),
+		cmpopts.IgnoreUnexported(v1pb.Coding{}, v2pb.Coding{}),
+		cmpopts.IgnoreUnexported(v1pb.Reading{}, v2pb.Reading{}),
 		cmpopts.IgnoreUnexported(v1pb.CreateResponse{}, v2pb.CreateResponse{}),
 		cmpopts.IgnoreUnexported(v1pb.GetResponse{}, v2pb.GetResponse{}),
 	}
@@ -72,6 +77,7 @@ func TestExample(t *testing.T) {
 				FirstName:  "Dane",
 				LastName:   "Harrigan",
 				Employment: v1pb.Person_EMPLOYED,
+				Hobby:      hobbyCodingV1(),
 			},
 			res: &v1pb.CreateResponse{
 				Person: personV1(uuidv1),
@@ -87,9 +93,10 @@ func TestExample(t *testing.T) {
 				FullName:   "Dane Harrigan",
 				Employment: v2pb.Person_FULL_TIME,
 				Age:        36,
+				Hobby:      hobbyReadingV2(),
 			},
 			res: &v2pb.CreateResponse{
-				Person: personV2(uuidv2, 36),
+				Person: personV2(uuidv2, 36, hobbyReadingV2()),
 			},
 			err: nil,
 		},
@@ -113,7 +120,7 @@ func TestExample(t *testing.T) {
 				Id: uuidv2,
 			},
 			res: &v2pb.GetResponse{
-				Person: personV2(uuidv2, 36),
+				Person: personV2(uuidv2, 36, hobbyReadingV2()),
 			},
 			err: nil,
 		},
@@ -125,7 +132,7 @@ func TestExample(t *testing.T) {
 				Id: uuidv1,
 			},
 			res: &v2pb.GetResponse{
-				Person: personV2(uuidv1, 16),
+				Person: personV2(uuidv1, 16, hobbyCodingV2()),
 			},
 			err: nil,
 		},
@@ -199,14 +206,46 @@ func personV1(id string) *v1pb.Person {
 		FirstName:  "Dane",
 		LastName:   "Harrigan",
 		Employment: v1pb.Person_EMPLOYED,
+		Hobby:      hobbyCodingV1(),
 	}
 }
 
-func personV2(id string, age int64) *v2pb.Person {
+func personV2(id string, age int64, hobby *v2pb.Hobby) *v2pb.Person {
 	return &v2pb.Person{
 		Id:         id,
 		FullName:   "Dane Harrigan",
 		Employment: v2pb.Person_FULL_TIME,
 		Age:        age,
+		Hobby:      hobby,
+	}
+}
+
+func hobbyCodingV1() *v1pb.Hobby {
+	return &v1pb.Hobby{
+		Type: &v1pb.Hobby_Coding{
+			Coding: &v1pb.Coding{
+				Language: "golang",
+			},
+		},
+	}
+}
+
+func hobbyCodingV2() *v2pb.Hobby {
+	return &v2pb.Hobby{
+		Type: &v2pb.Hobby_Coding{
+			Coding: &v2pb.Coding{
+				Language: "golang",
+			},
+		},
+	}
+}
+
+func hobbyReadingV2() *v2pb.Hobby {
+	return &v2pb.Hobby{
+		Type: &v2pb.Hobby_Reading{
+			Reading: &v2pb.Reading{
+				Genre: "fantasy",
+			},
+		},
 	}
 }

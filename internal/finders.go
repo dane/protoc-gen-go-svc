@@ -107,8 +107,28 @@ func findNextMessage(message *protogen.Message, next *Service) (*protogen.Messag
 	return nil, fmt.Errorf("failed to find next message for %s", messageName)
 }
 
-func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Field, error) {
-	fieldName := field.GoName
+func findNextOneof(oneof *protogen.Oneof, next *protogen.Message) (*protogen.Oneof, error) {
+	oneofName := string(oneof.Desc.Name())
+	name, err := delegateOneofName(oneof)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find delegate oneof for %s: %w", oneofName, err)
+	}
+
+	if name == "" {
+		name = oneofName
+	}
+
+	for _, oneof := range next.Oneofs {
+		if name == string(oneof.Desc.Name()) {
+			return oneof, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find next oneof for %s", oneofName)
+}
+
+func findNextOneofField(field *protogen.Field, next *protogen.Oneof) (*protogen.Field, error) {
+	fieldName := string(field.Desc.Name())
 	name, err := delegateFieldName(field)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find delegate field for %s: %w", fieldName, err)
@@ -119,7 +139,27 @@ func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Fie
 	}
 
 	for _, field := range next.Fields {
-		if name == field.GoName {
+		if name == string(field.Desc.Name()) {
+			return field, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find next field for %s", fieldName)
+}
+
+func findNextField(field *protogen.Field, next *protogen.Message) (*protogen.Field, error) {
+	fieldName := string(field.Desc.Name())
+	name, err := delegateFieldName(field)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find delegate field for %s: %w", fieldName, err)
+	}
+
+	if name == "" {
+		name = fieldName
+	}
+
+	for _, field := range next.Fields {
+		if name == string(field.Desc.Name()) {
 			return field, nil
 		}
 	}
@@ -226,6 +266,50 @@ func findPrivateReceiveEnumValues(value *protogen.EnumValue, enum *protogen.Enum
 	}
 
 	return values, nil
+}
+
+func findPrivateOneof(oneof *protogen.Oneof, message *protogen.Message, chain []*Service) (*protogen.Oneof, error) {
+	targetMessage := message
+	targetOneof := oneof
+
+	var err error
+	for _, next := range chain {
+		targetMessage, err = findNextMessage(targetMessage, next)
+		if err != nil {
+			return nil, err
+		}
+
+		targetOneof, err = findNextOneof(targetOneof, targetMessage)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetOneof, nil
+}
+
+func findPrivateOneofField(field *protogen.Field, oneof *protogen.Oneof, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
+	targetMessage := message
+	targetOneof := oneof
+	targetField := field
+
+	var err error
+	for _, next := range chain {
+		targetMessage, err = findNextMessage(targetMessage, next)
+		if err != nil {
+			return nil, err
+		}
+
+		targetOneof, err = findNextOneof(targetOneof, targetMessage)
+		if err != nil {
+			return nil, err
+		}
+
+		targetField, err = findNextOneofField(targetField, targetOneof)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return targetField, nil
 }
 
 func findPrivateField(field *protogen.Field, message *protogen.Message, chain []*Service) (*protogen.Field, error) {

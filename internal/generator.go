@@ -2,6 +2,10 @@ package internal
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -56,6 +60,7 @@ var (
 	inputs  map[*protogen.Message]struct{}
 	outputs map[*protogen.Message]struct{}
 	driver  Driver
+	logger  *log.Logger
 )
 
 func init() {
@@ -65,7 +70,13 @@ func init() {
 
 }
 
-func (g Generator) Run(plugin *protogen.Plugin) error {
+func (g *Generator) Run(plugin *protogen.Plugin) error {
+	var dst io.Writer = ioutil.Discard
+	if g.Verbose {
+		dst = os.Stderr
+	}
+	logger = log.New(dst, "", 0)
+
 	var services []*Service
 	var private *Service
 	messages := make(map[protogen.GoImportPath]map[string]*protogen.Message)
@@ -165,6 +176,7 @@ func (g Generator) Run(plugin *protogen.Plugin) error {
 
 	serviceLen := len(services)
 	for i, service := range services {
+		logger.Printf("package=%s at=generate-service", service.GoPackageName)
 		fileName := filepath.Join(ServiceDir, service.PackageName(), ServiceFileName)
 		file := plugin.NewGeneratedFile(fileName, service.GoImportPath)
 		chain := services[i+1:]

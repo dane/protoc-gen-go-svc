@@ -24,6 +24,7 @@ message Person {
   Employment employment = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
+  Hobby hobby = 7 [(gen.svc.field).validate = { required: true }];
 
   enum Employment {
     UNSET = 0 [(gen.svc.enum_value).delegate = { name: "UNDEFINED" }];
@@ -33,11 +34,33 @@ message Person {
   }
 }
 
+message Hobby {
+  oneof type {
+    option (gen.svc.oneof).validate = { required: true };
+    Coding coding = 1;
+    Reading reading = 2;
+    Cycling cycling = 3;
+  }
+}
+
+message Coding {
+  string language = 1;
+}
+
+message Reading {
+  string genre = 1;
+}
+
+message Cycling {
+  string style = 1;
+}
+
 message CreateRequest {
-  string id = 1 [(gen.svc.field).validate = { required: true, is: UUID }];
+  string id = 1        [(gen.svc.field).validate = { required: true, is: UUID }];
   string full_name = 2 [(gen.svc.field).validate = { required: true, min: { int64: 4 } }];
-  int64 age = 3 [(gen.svc.field).default = { int64: 0 }];
+  int64 age = 3        [(gen.svc.field).default = { int64: 0 }];
   Person.Employment employment = 4;
+  Hobby hobby = 5      [(gen.svc.field).validate = { required: true }];
 }
 
 message CreateResponse {

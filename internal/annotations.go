@@ -22,6 +22,14 @@ func delegateFieldName(field *protogen.Field) (string, error) {
 	return driver.DelegateFieldName(field)
 }
 
+func delegateOneofName(oneof *protogen.Oneof) (string, error) {
+	return driver.DelegateOneofName(oneof)
+}
+
+func deprecatedOneof(oneof *protogen.Oneof) bool {
+	return driver.DeprecatedOneof(oneof)
+}
+
 func deprecatedField(field *protogen.Field) bool {
 	return driver.DeprecatedField(field)
 }
@@ -64,4 +72,8 @@ func in(packageName string, field *protogen.Field) ([]string, error) {
 
 func requiredField(field *protogen.Field) bool {
 	return driver.RequiredField(field)
+}
+
+func requiredOneof(oneof *protogen.Oneof) bool {
+	return driver.RequiredOneof(oneof)
 }
