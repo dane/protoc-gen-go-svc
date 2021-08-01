@@ -1,10 +1,12 @@
 # Initial Design
 
 Author: [Dane Harrigan](https://github.com/dane)
+
 Created: May 09, 2021
+
 Status: Draft
 
-This proposal captures the initial design, objectives, and snytax of the
+This proposal captures the initial design, objectives, and syntax of the
 `go-svc` protoc plugin. The service output is heavily inspired by the
 conversations and prototypes built by [Dane Harrigan](https://github.com/dane)
 and [Alex Dadgar](https://github.com/dadgar).
