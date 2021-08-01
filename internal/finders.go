@@ -402,31 +402,3 @@ func (d deprecatedFinder) sortedEnums() []*protogen.Enum {
 	sort.Sort(byEnumName(enums))
 	return enums
 }
-
-type byMessageName []*protogen.Message
-
-func (s byMessageName) Len() int {
-	return len(s)
-}
-
-func (s byMessageName) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s byMessageName) Less(i, j int) bool {
-	return s[i].GoIdent.GoName < s[j].GoIdent.GoName
-}
-
-type byEnumName []*protogen.Enum
-
-func (s byEnumName) Len() int {
-	return len(s)
-}
-
-func (s byEnumName) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s byEnumName) Less(i, j int) bool {
-	return s[i].GoIdent.GoName < s[j].GoIdent.GoName
-}
