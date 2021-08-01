@@ -7,103 +7,205 @@ import "google/protobuf/descriptor.proto";
 option go_package = "github.com/dane/protoc-gen-go-svc/gen/svc;svc";
 
 extend google.protobuf.FileOptions {
+  // go_package is the location where all service versions will be generated.
+  // Each service package name will be a sub-package. 
   string go_package = 1115;
 }
 
 extend google.protobuf.MethodOptions {
+  // method see documentation of `MethodAnnotation`.
   MethodAnnotation method = 1115;
 }
 
 extend google.protobuf.MessageOptions {
+  // message see documentation of `MessageAnnotation`.
   MessageAnnotation message = 1115;
 }
 
 extend google.protobuf.FieldOptions {
+  // field see documentation of `FieldAnnotation`.
   FieldAnnotation field = 1115;
 };
 
 extend google.protobuf.EnumOptions {
+  // enum see documentation of `EnumAnnotation`.
   EnumAnnotation enum = 1115;
 }
 
 extend google.protobuf.OneofOptions {
+  // oneof see documentation of `OneofAnnotation`.
   OneofAnnotation oneof = 1115;
 }
 
 extend google.protobuf.EnumValueOptions {
+  // enum_value see documentation of `EnumValueAnnotation`.
   EnumValueAnnotation enum_value = 1115;
 }
 
 message MethodAnnotation {
+  // delegate is a map with a string field `name`. The `name` field allows
+  // overriding which method is called next in the chain of service versions.
   Delegate delegate = 1;
+
+  // deprecated indicates a method is not present in the next service
+  // version. Deprecated methods will call directly to the private service.
   bool deprecated = 2;
 }
 
 message MessageAnnotation {
+  // delegate is a map with a string field `name`. The `name` field allows
+  // overriding which message is targated when converted messages between
+  // service versions.
   Delegate delegate = 1;
 }
 
 message FieldAnnotation {
+  // delegate is a map with a string field `name`. The `name` field allows
+  // overriding which field is targated when reading and writing between
+  // messages of service versions.
   Delegate delegate = 1;
+
+  // receive is a map with a boolean field of `required`. The `required` value
+  // states that the field must be populated for the message to be compatible
+  // with the service version.
   FieldReceive receive = 2;
+
+  // validate is a map of validation criteria for the field. See documentation
+  // of `Validate`.
   Validate validate = 3;
-  Default  default = 4;
+
+  // default is a map of builtin types. When messages are converted from an
+  // older service version to the next, new fields may be introduced. The
+  // `default` value set will populate the newly introduced field.
+  Default default = 4;
+
+  // deprecated indicates a field is not present in the message of the next
+  // service version. Deprecated fields must be present on the message of the
+  // private service.
   bool deprecated = 5;
 }
 
 message EnumAnnotation {
+  // delegate is a map with a string field `name`. The `name` field allows
+  // overriding which enum is targated when reading and writing between
+  // messages of service versions.
   Delegate delegate = 1;
 }
 
 message EnumValueAnnotation {
+  // delegate is a map with a string field `name`. The `name` field allows
+  // overriding which enum value is targated when reading and writing between
+  // enums of service versions.
   Delegate delegate = 1;
+
+  // receive is a map with a string field `name` and repeated string field
+  // `names`. These fields allow overriding which enum values are targeted when
+  // reading from the next service version.
   Receive receive = 2;
 }
 
 message OneofAnnotation {
+  // delegate is a map with a string field `name`. The `name` field allows
+  // overriding which oneof is targated when reading and writing between
+  // messages of service versions.
   Delegate delegate = 1;
+
+  // receive is a map with a boolean field of `required`. The `required` value
+  // states that the oneof must be populated for the message to be compatible
+  // with the service version.
   FieldReceive receive = 2;
-  Validate validate = 3;
+
+  // validate is a map with a boolean field of `required`. The `required` value
+  // states that the oneof must be populated. See documentation of
+  // `OneofValidate`.
+  OneofValidate validate = 3;
+
+  // deprecated indicates a oneof is not present in the message of the next
+  // service version. Deprecated oneofs  must be present on the message of the
+  // private service.
   bool deprecated = 5;
 }
 
 message Delegate {
+  // name is the target found in the next service. This should only be set when
+  // the target name differs between service versions.
   string name = 1;
 }
 
 message Receive {
+  // name is the target found in the next service. This should only be set when
+  // the target name differs between service versions.
   string name = 1;
+
+  // names are multiple targets found in the next service. This should only be
+  // set when multiple targets should assign the value.
   repeated string names = 2;
 }
 
 message FieldReceive {
+  // required indicates the field value must be populated in order for the
+  // message to be compatible with the service version.
   bool required = 1;
 }
 
 message Validate {
+  // required ensures a field value is not nil, an empty string, false, or
+  // zero. 
   bool required = 1;
+
+  // min ensures the field value is of a minimum size or length.
   Number min = 2;
+
+  // max ensures the field value is of a maximum size or length.
   Number max = 3;
+
+  // is ensures a field value meets a specific format. The supported options are
+  // `UUID`, `EMAIL`, and `URL`.
   IsType is = 4;
+
+  // in ensures the field value is one of the provided values. All values are
+  // provided as strings (eg: "true" or "1") and support enum values.
   repeated string in = 5;
 
   enum IsType {
+    // UNSPECIFIED should not be used.
     UNSPECIFIED = 0;
+
+    // UUID targets the formats UUID v3 to v5.
     UUID = 1;
+
+    // EMAIL targets the format of an email address.
     EMAIL = 2;
+
+    // URL targets the format of a URL.
     URL = 3;
   }
 }
 
+message OneofValidate {
+  // required ensures a field value is not nil.
+  bool required = 1;
+}
+
 message Default {
+  // bool contains the default value of a boolean field.
   bool bool = 1;
+
+  // int64 contains the default value of a int64 field.
   int64 int64 = 2;
+
+  // uint64 contains the default value of a uint64 field.
   uint64 uint64 = 3;
+
+  // double contains the default value of a double field.
   double double = 4;
+
+  // string contains the default value of a string field.
   string string = 5;
 }
 
 message Number {
+  // value allows setting a numeric value that matches the field type.
   oneof value {
     int64 int64 = 1;
     double double = 2;
