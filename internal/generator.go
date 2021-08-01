@@ -174,6 +174,22 @@ func (g *Generator) Run(plugin *protogen.Plugin) error {
 		}
 	}
 
+	// Sort methods, messages, enums, fields and oneofs
+	for _, service := range services {
+		sort.Sort(byMethodName(service.Methods))
+		sort.Sort(byMessageName(service.Messages))
+		sort.Sort(byEnumName(service.Enums))
+
+		for _, message := range service.Messages {
+			sort.Sort(byFieldNumber(message.Fields))
+			sort.Sort(byOneofName(message.Oneofs))
+
+			for _, oneof := range message.Oneofs {
+				sort.Sort(byFieldNumber(oneof.Fields))
+			}
+		}
+	}
+
 	serviceLen := len(services)
 	for i, service := range services {
 		logger.Printf("package=%s at=generate-service", service.GoPackageName)
