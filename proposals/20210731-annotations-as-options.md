@@ -4,7 +4,7 @@ Author: [Dane Harrigan][1]
 
 Created: July 31, 2021
 
-Status: Draft
+Status: Accepted
 
 This proposal captures the outcome of a conversation between [Dane Harrigan][1]
 and [Alex Dadgar][2] to leverage [Protobufs options][3] instead of comment
