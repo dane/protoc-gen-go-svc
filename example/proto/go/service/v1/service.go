@@ -33,16 +33,16 @@ func NewValidator() Validator { return validator{} }
 type Validator interface {
 	Name() string
 	ValidateBiking(*publicpb.Biking) error
-	ValidateGetRequest(*publicpb.GetRequest) error
-	ValidateListRequest(*publicpb.ListRequest) error
-	ValidatePerson(*publicpb.Person) error
 	ValidateCoding(*publicpb.Coding) error
 	ValidateCreateRequest(*publicpb.CreateRequest) error
 	ValidateDeleteRequest(*publicpb.DeleteRequest) error
+	ValidateGetRequest(*publicpb.GetRequest) error
 	ValidateHobby(*publicpb.Hobby) error
 	ValidateHobby_Coding(*publicpb.Hobby_Coding) error
 	ValidateHobby_Reading(*publicpb.Hobby_Reading) error
 	ValidateHobby_Biking(*publicpb.Hobby_Biking) error
+	ValidateListRequest(*publicpb.ListRequest) error
+	ValidatePerson(*publicpb.Person) error
 	ValidateReading(*publicpb.Reading) error
 }
 type validator struct{}
@@ -54,44 +54,6 @@ func (v validator) ValidateBiking(in *publicpb.Biking) error {
 	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Style),
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id,
-			validation.Required,
-			is.UUID,
-		),
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
-	err := validation.ValidateStruct(in)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (v validator) ValidatePerson(in *publicpb.Person) error {
-	if in == nil {
-		return nil
-	}
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.Id),
-		validation.Field(&in.FirstName),
-		validation.Field(&in.LastName),
-		validation.Field(&in.Employment),
-		validation.Field(&in.Hobby,
-			validation.Required,
-			validation.By(func(interface{}) error { return v.ValidateHobby(in.Hobby) }),
-		),
 	)
 	if err != nil {
 		return err
@@ -136,6 +98,18 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id,
+			validation.Required,
+			is.UUID,
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -212,6 +186,32 @@ func (v validator) ValidateHobby_Biking(in *publicpb.Hobby_Biking) error {
 	}
 	return nil
 }
+func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	err := validation.ValidateStruct(in)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (v validator) ValidatePerson(in *publicpb.Person) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Id),
+		validation.Field(&in.FirstName),
+		validation.Field(&in.LastName),
+		validation.Field(&in.Employment),
+		validation.Field(&in.Hobby,
+			validation.Required,
+			validation.By(func(interface{}) error { return v.ValidateHobby(in.Hobby) }),
+		),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (v validator) ValidateReading(in *publicpb.Reading) error {
 	if in == nil {
 		return nil
@@ -233,19 +233,19 @@ type Converter interface {
 	Name() string
 	ToNextCreateRequest(*publicpb.CreateRequest) *nextpb.CreateRequest
 	ToPublicCreateResponse(*nextpb.CreateResponse, *privatepb.CreateResponse) (*publicpb.CreateResponse, error)
-	ToNextGetRequest(*publicpb.GetRequest) *nextpb.GetRequest
-	ToPublicGetResponse(*nextpb.GetResponse, *privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToNextDeleteRequest(*publicpb.DeleteRequest) *nextpb.DeleteRequest
 	ToPublicDeleteResponse(*nextpb.DeleteResponse, *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
+	ToNextGetRequest(*publicpb.GetRequest) *nextpb.GetRequest
+	ToPublicGetResponse(*nextpb.GetResponse, *privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToPrivateListRequest(*publicpb.ListRequest) *privatepb.ListRequest
 	ToNextCycling(*publicpb.Biking) *nextpb.Cycling
 	ToPublicBiking(*nextpb.Cycling, *privatepb.Cycling) (*publicpb.Biking, error)
-	ToNextPerson(*publicpb.Person) *nextpb.Person
-	ToPublicPerson(*nextpb.Person, *privatepb.Person) (*publicpb.Person, error)
 	ToNextCoding(*publicpb.Coding) *nextpb.Coding
 	ToPublicCoding(*nextpb.Coding, *privatepb.Coding) (*publicpb.Coding, error)
 	ToNextHobby(*publicpb.Hobby) *nextpb.Hobby
 	ToPublicHobby(*nextpb.Hobby, *privatepb.Hobby) (*publicpb.Hobby, error)
+	ToNextPerson(*publicpb.Person) *nextpb.Person
+	ToPublicPerson(*nextpb.Person, *privatepb.Person) (*publicpb.Person, error)
 	ToNextReading(*publicpb.Reading) *nextpb.Reading
 	ToPublicReading(*nextpb.Reading, *privatepb.Reading) (*publicpb.Reading, error)
 	ToNextPerson_Employment(publicpb.Person_Employment) nextpb.Person_Employment
@@ -287,6 +287,26 @@ func (c converter) ToPublicCreateResponse(nextIn *nextpb.CreateResponse, private
 	}
 	return &out, err
 }
+func (c converter) ToNextDeleteRequest(in *publicpb.DeleteRequest) *nextpb.DeleteRequest {
+	if in == nil {
+		return nil
+	}
+	var out nextpb.DeleteRequest
+	out.Id = in.Id
+	return &out
+}
+func (c converter) ToPublicDeleteResponse(nextIn *nextpb.DeleteResponse, privateIn *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error) {
+	if nextIn == nil || privateIn == nil {
+		return nil, nil
+	}
+	required := validation.Errors{}
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.DeleteResponse
+	var err error
+	return &out, err
+}
 func (c converter) ToNextGetRequest(in *publicpb.GetRequest) *nextpb.GetRequest {
 	if in == nil {
 		return nil
@@ -309,26 +329,6 @@ func (c converter) ToPublicGetResponse(nextIn *nextpb.GetResponse, privateIn *pr
 	if err != nil {
 		return nil, err
 	}
-	return &out, err
-}
-func (c converter) ToNextDeleteRequest(in *publicpb.DeleteRequest) *nextpb.DeleteRequest {
-	if in == nil {
-		return nil
-	}
-	var out nextpb.DeleteRequest
-	out.Id = in.Id
-	return &out
-}
-func (c converter) ToPublicDeleteResponse(nextIn *nextpb.DeleteResponse, privateIn *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error) {
-	if nextIn == nil || privateIn == nil {
-		return nil, nil
-	}
-	required := validation.Errors{}
-	if err := required.Filter(); err != nil {
-		return nil, err
-	}
-	var out publicpb.DeleteResponse
-	var err error
 	return &out, err
 }
 func (c converter) ToPrivateListRequest(in *publicpb.ListRequest) *privatepb.ListRequest {
@@ -357,47 +357,6 @@ func (c converter) ToPublicBiking(nextIn *nextpb.Cycling, privateIn *privatepb.C
 	var out publicpb.Biking
 	var err error
 	out.Style = nextIn.Style
-	return &out, err
-}
-func (c converter) ToNextPerson(in *publicpb.Person) *nextpb.Person {
-	if in == nil {
-		return nil
-	}
-	var out nextpb.Person
-	out.Id = in.Id
-	out.Employment = c.ToNextPerson_Employment(in.Employment)
-	out.CreatedAt = in.CreatedAt
-	out.UpdatedAt = in.UpdatedAt
-	out.Hobby = c.ToNextHobby(in.Hobby)
-	return &out
-}
-func (c converter) ToPublicPerson(nextIn *nextpb.Person, privateIn *privatepb.Person) (*publicpb.Person, error) {
-	if nextIn == nil || privateIn == nil {
-		return nil, nil
-	}
-	required := validation.Errors{}
-	required["Id"] = validation.Validate(nextIn.Id, validation.Required)
-	required["FirstName"] = validation.Validate(privateIn.FirstName, validation.Required)
-	required["LastName"] = validation.Validate(privateIn.LastName, validation.Required)
-	required["Employment"] = validation.Validate(nextIn.Employment, validation.Required)
-	if err := required.Filter(); err != nil {
-		return nil, err
-	}
-	var out publicpb.Person
-	var err error
-	out.Id = nextIn.Id
-	out.FirstName = privateIn.FirstName
-	out.LastName = privateIn.LastName
-	out.Employment, err = c.ToPublicPerson_Employment(nextIn.Employment)
-	if err != nil {
-		return nil, err
-	}
-	out.CreatedAt = nextIn.CreatedAt
-	out.UpdatedAt = nextIn.UpdatedAt
-	out.Hobby, err = c.ToPublicHobby(nextIn.Hobby, privateIn.Hobby)
-	if err != nil {
-		return nil, err
-	}
 	return &out, err
 }
 func (c converter) ToNextCoding(in *publicpb.Coding) *nextpb.Coding {
@@ -465,6 +424,47 @@ func (c converter) ToPublicHobby(nextIn *nextpb.Hobby, privateIn *privatepb.Hobb
 		var value publicpb.Hobby_Biking
 		value.Biking, err = c.ToPublicBiking(nextIn.GetCycling(), privateIn.GetCycling())
 		out.Type = &value
+	}
+	return &out, err
+}
+func (c converter) ToNextPerson(in *publicpb.Person) *nextpb.Person {
+	if in == nil {
+		return nil
+	}
+	var out nextpb.Person
+	out.Id = in.Id
+	out.Employment = c.ToNextPerson_Employment(in.Employment)
+	out.CreatedAt = in.CreatedAt
+	out.UpdatedAt = in.UpdatedAt
+	out.Hobby = c.ToNextHobby(in.Hobby)
+	return &out
+}
+func (c converter) ToPublicPerson(nextIn *nextpb.Person, privateIn *privatepb.Person) (*publicpb.Person, error) {
+	if nextIn == nil || privateIn == nil {
+		return nil, nil
+	}
+	required := validation.Errors{}
+	required["Id"] = validation.Validate(nextIn.Id, validation.Required)
+	required["FirstName"] = validation.Validate(privateIn.FirstName, validation.Required)
+	required["LastName"] = validation.Validate(privateIn.LastName, validation.Required)
+	required["Employment"] = validation.Validate(nextIn.Employment, validation.Required)
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+	var out publicpb.Person
+	var err error
+	out.Id = nextIn.Id
+	out.FirstName = privateIn.FirstName
+	out.LastName = privateIn.LastName
+	out.Employment, err = c.ToPublicPerson_Employment(nextIn.Employment)
+	if err != nil {
+		return nil, err
+	}
+	out.CreatedAt = nextIn.CreatedAt
+	out.UpdatedAt = nextIn.UpdatedAt
+	out.Hobby, err = c.ToPublicHobby(nextIn.Hobby, privateIn.Hobby)
+	if err != nil {
+		return nil, err
 	}
 	return &out, err
 }
@@ -652,18 +652,18 @@ func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publ
 	out, _, err := s.CreateImpl(ctx, in)
 	return out, err
 }
-func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
-	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-	out, _, err := s.GetImpl(ctx, in)
-	return out, err
-}
 func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 	out, _, err := s.DeleteImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
+	if err := s.ValidateGetRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+	out, _, err := s.GetImpl(ctx, in)
 	return out, err
 }
 func (s *Service) List(ctx context.Context, in *publicpb.ListRequest) (*publicpb.ListResponse, error) {
@@ -687,18 +687,6 @@ func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mu
 	}
 	return out, privateOut, nil
 }
-func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators ...private.FetchRequestMutator) (*publicpb.GetResponse, *privatepb.FetchResponse, error) {
-	nextIn := s.ToNextGetRequest(in)
-	nextOut, privateOut, err := s.Next.GetImpl(ctx, nextIn, mutators...)
-	if err != nil {
-		return nil, nil, err
-	}
-	out, err := s.ToPublicGetResponse(nextOut, privateOut)
-	if err != nil {
-		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
-	}
-	return out, privateOut, nil
-}
 func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mutators ...private.DeleteRequestMutator) (*publicpb.DeleteResponse, *privatepb.DeleteResponse, error) {
 	nextIn := s.ToNextDeleteRequest(in)
 	nextOut, privateOut, err := s.Next.DeleteImpl(ctx, nextIn, mutators...)
@@ -706,6 +694,18 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 		return nil, nil, err
 	}
 	out, err := s.ToPublicDeleteResponse(nextOut, privateOut)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+	}
+	return out, privateOut, nil
+}
+func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators ...private.FetchRequestMutator) (*publicpb.GetResponse, *privatepb.FetchResponse, error) {
+	nextIn := s.ToNextGetRequest(in)
+	nextOut, privateOut, err := s.Next.GetImpl(ctx, nextIn, mutators...)
+	if err != nil {
+		return nil, nil, err
+	}
+	out, err := s.ToPublicGetResponse(nextOut, privateOut)
 	if err != nil {
 		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
