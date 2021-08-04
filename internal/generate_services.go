@@ -10,8 +10,6 @@ import (
 )
 
 func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) error {
-	private := chain[len(chain)-1]
-	services := chain[:len(chain)-1]
 	imports := []protogen.GoIdent{
 		protogen.GoImportPath("google.golang.org/grpc").Ident("grpc"),
 	}
@@ -23,58 +21,18 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 		imports = append(imports, service.GoServiceImportPath.Ident(packageName))
 	}
 
-	file.P("package service")
-	file.P("import (")
-	for _, ident := range imports {
-		file.P(ident.GoName, ident.GoImportPath)
-	}
-	file.P(")")
-
-	file.P("type Option interface { Name() string }")
-
-	file.P("func RegisterServer(server *grpc.Server, impl privatepb.", private.GoName, "Server, options ...Option) {")
-	file.P("servicePrivate := &", private.GoPackageName, ".Service{")
-	file.P("Validator: ", private.GoPackageName, ".NewValidator(),")
-	file.P("Impl: impl,")
-	file.P("}")
-
+	private := chain[len(chain)-1]
+	services := chain[:len(chain)-1]
 	sort.Sort(sort.Reverse(byPackageName(services)))
-	for i, service := range services {
-		packageName := service.GoPackageName
-		serviceName := service.GoName
-		varName := fmt.Sprintf("service%s", packageName)
-		file.P(varName, ":= &", packageName, ".Service{")
-		file.P("Validator: ", packageName, ".NewValidator(),")
-		file.P("Converter: ", packageName, ".NewConverter(),")
-		file.P("Private: servicePrivate,")
-		if i > 0 {
-			nextVarName := fmt.Sprintf("service%s", services[i-1].GoPackageName)
-			file.P("Next: ", nextVarName, ",")
-		}
-		file.P("}")
 
-		file.P(packageName, "pb.Register", serviceName, "Server(server, ", varName, ")")
+	g := ServiceRegisterGenerator{
+		PluginVersion: pluginVersion,
+		Imports:       imports,
+		Services:      services,
+		Private:       private,
 	}
 
-	file.P("for _, opt := range options {")
-	file.P("switch opt.Name() {")
-	file.P("case private.ValidatorName:")
-	file.P("servicePrivate.Validator = opt.(private.Validator)")
-
-	for _, service := range services {
-		packageName := service.GoPackageName
-		varName := fmt.Sprintf("service%s", packageName)
-		file.P("case ", packageName, ".ConverterName:")
-		file.P(varName, ".Converter = opt.(", packageName, ".Converter)")
-		file.P("case ", packageName, ".ValidatorName:")
-		file.P(varName, ".Validator = opt.(", packageName, ".Validator)")
-	}
-	file.P("}")
-	file.P("}")
-
-	file.P("}")
-
-	return nil
+	return g.Generate(file)
 }
 
 func generatePrivateService(file *protogen.GeneratedFile, service *Service) error {
