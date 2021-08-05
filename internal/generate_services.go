@@ -52,7 +52,10 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 		fmt.Sprintf("Impl privatepb.%sServer", service.GoName),
 	)
 
-	generateServiceMethods(file, service, PrivateService)
+	if err := generateServiceMethods(file, service, PrivateService); err != nil {
+		return err
+	}
+
 	if err := generateServiceValidators(file, "privatepb", service); err != nil {
 		return err
 	}
@@ -86,7 +89,10 @@ func generateLatestPublicService(file *protogen.GeneratedFile, service *Service,
 		fmt.Sprintf("publicpb.%sServer", service.GoName),
 	)
 
-	generateServiceMethods(file, service, LatestPublicService)
+	if err := generateServiceMethods(file, service, LatestPublicService); err != nil {
+		return err
+	}
+
 	for _, method := range service.Methods {
 		if err := generateServiceMethodToPrivateImpl(file, method, private); err != nil {
 			return err
@@ -143,7 +149,9 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 	}
 
 	logger.Printf("package=%s at=generate-methods", service.GoPackageName)
-	generateServiceMethods(file, service, PublicService)
+	if err := generateServiceMethods(file, service, PublicService); err != nil {
+		return err
+	}
 
 	for _, method := range service.Methods {
 		if deprecatedMethod(method) {
@@ -1035,7 +1043,7 @@ func generateServiceStruct(file *protogen.GeneratedFile, refs ...string) {
 	file.P("}")
 }
 
-func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serviceType ServiceType) {
+func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serviceType ServiceType) error {
 	for _, method := range service.Methods {
 		g := ServiceMethodGenerator{
 			MethodName: method.GoName,
@@ -1051,8 +1059,12 @@ func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serv
 			g.Private = true
 		}
 
-		_ = g.Generate(file)
+		if err := g.Generate(file); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *protogen.Method, private *Service) error {
