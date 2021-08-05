@@ -1037,36 +1037,22 @@ func generateServiceStruct(file *protogen.GeneratedFile, refs ...string) {
 
 func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serviceType ServiceType) {
 	for _, method := range service.Methods {
-		methodName := method.GoName
-		inName := method.Input.GoIdent.GoName
-		outName := method.Output.GoIdent.GoName
+		g := ServiceMethodGenerator{
+			MethodName: method.GoName,
+			InputName:  method.Input.GoIdent.GoName,
+			OutputName: method.Output.GoIdent.GoName,
+		}
 
 		switch serviceType {
 		case PublicService, LatestPublicService:
-			generatePublicServiceMethod(file, methodName, inName, outName)
+			g.PackageName = "publicpb"
 		case PrivateService:
-			generatePrivateServiceMethod(file, methodName, inName, outName)
+			g.PackageName = "privatepb"
+			g.Private = true
 		}
+
+		_ = g.Generate(file)
 	}
-}
-
-func generatePublicServiceMethod(file *protogen.GeneratedFile, methodName, inName, outName string) {
-	file.P("func (s *Service) ", methodName, "(ctx context.Context, in *publicpb.", inName, ") (*publicpb.", outName, ", error) {")
-	file.P("if err := s.Validate", inName, "(in); err != nil {")
-	file.P(`return nil, status.Errorf(codes.InvalidArgument, "%s", err)`)
-	file.P("}")
-	file.P("out, _, err := s.", methodName, "Impl(ctx, in)")
-	file.P("return out, err")
-	file.P("}")
-}
-
-func generatePrivateServiceMethod(file *protogen.GeneratedFile, methodName, inName, outName string) {
-	file.P("func (s *Service) ", methodName, "(ctx context.Context, in *privatepb.", inName, ") (*privatepb.", outName, ", error) {")
-	file.P("if err := s.Validate", inName, "(in); err != nil {")
-	file.P(`return nil, status.Errorf(codes.InvalidArgument, "%s", err)`)
-	file.P("}")
-	file.P("return s.Impl.", methodName, "(ctx, in)")
-	file.P("}")
 }
 
 func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *protogen.Method, private *Service) error {
@@ -1097,6 +1083,7 @@ func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *pr
 		deprecatedPrefix = "Deprecated"
 	}
 
+	// DANE
 	file.P("func (s *Service) ", publicMethodName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
 	file.P("privateIn := s.ToPrivate", privateInName, "(in)")
 	file.P("private.Apply", privateInName, "Mutators(privateIn, mutators)")
@@ -1144,6 +1131,7 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 	privateInName := privateIn.GoIdent.GoName
 	privateOutName := privateOut.GoIdent.GoName
 
+	// DANE
 	file.P("func (s *Service) ", publicMethodName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
 
 	for _, field := range method.Input.Fields {

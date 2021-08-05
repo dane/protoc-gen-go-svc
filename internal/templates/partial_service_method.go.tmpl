@@ -1,0 +1,12 @@
+func (s *Service){{ .MethodName }}(ctx context.Context, in *{{ .PackageName }}.{{ .InputName }}) (*{{ .PackageName }}.{{ .OutputName }}, error) {
+	if err := s.Validate{{ .InputName }}(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	{{- if .Private }}
+		return s.Impl.{{ .MethodName }}(ctx, in)
+	{{- else }}
+		out, _, err := s.{{ .MethodName }}Impl(ctx, in)
+		return out, err
+	{{- end }}
+}

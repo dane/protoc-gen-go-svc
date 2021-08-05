@@ -1,7 +1,0 @@
-{{ define "imports" }}
-import (
-{{ range .Imports -}}
-	{{ .GoName }} {{ .GoImportPath }}
-{{ end -}}
-)
-{{ end }}
