@@ -1056,7 +1056,7 @@ func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serv
 			g.PackageName = "publicpb"
 		case PrivateService:
 			g.PackageName = "privatepb"
-			g.Private = true
+			g.ToPrivate = true
 		}
 
 		if err := g.Generate(file); err != nil {

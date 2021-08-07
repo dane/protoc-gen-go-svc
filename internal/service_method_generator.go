@@ -9,7 +9,7 @@ type ServiceMethodGenerator struct {
 	InputName   string
 	OutputName  string
 	PackageName string
-	Private     bool
+	ToPrivate   bool
 }
 
 func (g *ServiceMethodGenerator) Generate(w io.Writer) error {
