@@ -1068,13 +1068,9 @@ func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serv
 }
 
 func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *protogen.Method, private *Service) error {
-	publicMethodName := method.GoName
-	publicInName := method.Input.GoIdent.GoName
-	publicOutName := method.Output.GoIdent.GoName
-
 	privateMethod, err := findNextMethod(method, private)
 	if err != nil {
-		return fmt.Errorf("failed to generate service %s method impl: %w", publicMethodName, err)
+		return fmt.Errorf("failed to generate service %s method impl: %w", method.GoName, err)
 	}
 
 	privateIn, err := findNextMessage(method.Input, private)
@@ -1087,48 +1083,37 @@ func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *pr
 		return err
 	}
 
-	privateMethodName := privateMethod.GoName
-	privateInName := privateIn.GoIdent.GoName
-	privateOutName := privateOut.GoIdent.GoName
 	var deprecatedPrefix string
 	if deprecatedMethod(method) {
 		deprecatedPrefix = "Deprecated"
 	}
 
-	// DANE
-	file.P("func (s *Service) ", publicMethodName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
-	file.P("privateIn := s.ToPrivate", privateInName, "(in)")
-	file.P("private.Apply", privateInName, "Mutators(privateIn, mutators)")
-	file.P("privateOut, err := s.Private.", privateMethodName, "(ctx, privateIn)")
-	file.P("if err != nil { return nil, nil, err }")
-	file.P("out, err := s.To", deprecatedPrefix, "Public", publicOutName, "(privateOut)")
-	file.P("if err != nil {")
-	file.P(`return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)`)
-	file.P("}")
-	file.P("return out, privateOut, nil")
-	file.P("}")
+	g := ServiceMethodImplToPrivateGenerator{
+		Prefix: deprecatedPrefix,
 
-	return nil
+		MethodName: method.GoName,
+		InputName:  method.Input.GoIdent.GoName,
+		OutputName: method.Output.GoIdent.GoName,
+
+		PrivateMethodName: privateMethod.GoName,
+		PrivateInputName:  privateIn.GoIdent.GoName,
+		PrivateOutputName: privateOut.GoIdent.GoName,
+	}
+
+	return g.Generate(file)
 }
 
 func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *protogen.Method, chain []*Service) error {
-	publicMethodName := method.GoName
-	publicInName := method.Input.GoIdent.GoName
-	publicOutName := method.Output.GoIdent.GoName
-
 	next := chain[0]
 	nextMethod, err := findNextMethod(method, next)
 	if err != nil {
-		return fmt.Errorf("failed to generate service %s method impl: %w", publicMethodName, err)
+		return fmt.Errorf("failed to generate service %s method impl: %w", method.GoName, err)
 	}
 
 	nextIn, err := findNextMessage(method.Input, next)
 	if err != nil {
 		return err
 	}
-
-	nextMethodName := nextMethod.GoName
-	nextInName := nextIn.GoIdent.GoName
 
 	privateIn, err := findPrivateMessage(method.Input, chain)
 	if err != nil {
@@ -1140,41 +1125,31 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 		return err
 	}
 
-	privateInName := privateIn.GoIdent.GoName
-	privateOutName := privateOut.GoIdent.GoName
-
-	// DANE
-	file.P("func (s *Service) ", publicMethodName, "Impl(ctx context.Context, in *publicpb.", publicInName, ", mutators ...private.", privateInName, "Mutator) (*publicpb.", publicOutName, ", *privatepb.", privateOutName, ", error) {")
+	g := ServiceMethodImplToNextGenerator{
+		MethodName:        method.GoName,
+		InputName:         method.Input.GoIdent.GoName,
+		OutputName:        method.Output.GoIdent.GoName,
+		PrivateInputName:  privateIn.GoIdent.GoName,
+		PrivateOutputName: privateOut.GoIdent.GoName,
+		NextMethodName:    nextMethod.GoName,
+		NextInputName:     nextIn.GoIdent.GoName,
+	}
 
 	for _, field := range method.Input.Fields {
 		if deprecatedField(field) {
-			privateMessage, err := findPrivateMessage(method.Input, chain)
+			privateField, err := findNextField(field, privateIn)
 			if err != nil {
 				return err
 			}
 
-			privateField, err := findNextField(field, privateMessage)
-			if err != nil {
-				return err
-			}
-
-			privateMessageName := privateMessage.GoIdent.GoName
-			privateFieldName := privateField.GoName
-			file.P("mutators = append(mutators, private.Set", privateMessageName, "_", privateFieldName, "(in.", field.GoName, "))")
+			g.DeprecatedFields = append(g.DeprecatedFields, DeprecatedField{
+				FieldName:        field.GoName,
+				PrivateFieldName: privateField.GoName,
+			})
 		}
 	}
 
-	file.P("nextIn := s.ToNext", nextInName, "(in)")
-	file.P("nextOut, privateOut, err := s.Next.", nextMethodName, "Impl(ctx, nextIn, mutators...)")
-	file.P("if err != nil { return nil, nil, err }")
-	file.P("out, err := s.ToPublic", publicOutName, "(nextOut, privateOut)")
-	file.P("if err != nil {")
-	file.P(`return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)`)
-	file.P("}")
-	file.P("return out, privateOut, nil")
-	file.P("}")
-
-	return nil
+	return g.Generate(file)
 }
 
 func generateServiceValidators(file *protogen.GeneratedFile, packageName string, service *Service) error {
