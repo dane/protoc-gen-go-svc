@@ -19,6 +19,9 @@ var (
 
 	//go:embed templates/partial_service_method_impl_to_next.go.tmpl
 	templateServiceMethodImpToNext string
+
+	//go:embed templates/partial_service_mutators.go.tmpl
+	templateServiceMutators string
 )
 
 func execute(name string, templateStr string, w io.Writer, params interface{}) error {

@@ -286,6 +286,12 @@ func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
 
 type CreateRequestMutator func(*privatepb.CreateRequest)
 
+func ApplyCreateRequestMutators(in *privatepb.CreateRequest, mutators []CreateRequestMutator) {
+	for _, mutator := range mutators {
+		mutator(in)
+	}
+}
+
 func SetCreateRequest_Id(value string) CreateRequestMutator {
 	return func(in *privatepb.CreateRequest) {
 		in.Id = value
@@ -321,35 +327,32 @@ func SetCreateRequest_Hobby(value *privatepb.Hobby) CreateRequestMutator {
 		in.Hobby = value
 	}
 }
-func ApplyCreateRequestMutators(in *privatepb.CreateRequest, mutators []CreateRequestMutator) {
-	for _, mutator := range mutators {
-		mutator(in)
-	}
-}
 
 type DeleteRequestMutator func(*privatepb.DeleteRequest)
 
-func SetDeleteRequest_Id(value string) DeleteRequestMutator {
-	return func(in *privatepb.DeleteRequest) {
-		in.Id = value
-	}
-}
 func ApplyDeleteRequestMutators(in *privatepb.DeleteRequest, mutators []DeleteRequestMutator) {
 	for _, mutator := range mutators {
 		mutator(in)
 	}
 }
 
+func SetDeleteRequest_Id(value string) DeleteRequestMutator {
+	return func(in *privatepb.DeleteRequest) {
+		in.Id = value
+	}
+}
+
 type FetchRequestMutator func(*privatepb.FetchRequest)
+
+func ApplyFetchRequestMutators(in *privatepb.FetchRequest, mutators []FetchRequestMutator) {
+	for _, mutator := range mutators {
+		mutator(in)
+	}
+}
 
 func SetFetchRequest_Id(value string) FetchRequestMutator {
 	return func(in *privatepb.FetchRequest) {
 		in.Id = value
-	}
-}
-func ApplyFetchRequestMutators(in *privatepb.FetchRequest, mutators []FetchRequestMutator) {
-	for _, mutator := range mutators {
-		mutator(in)
 	}
 }
 
@@ -363,6 +366,12 @@ func ApplyListRequestMutators(in *privatepb.ListRequest, mutators []ListRequestM
 
 type UpdateRequestMutator func(*privatepb.UpdateRequest)
 
+func ApplyUpdateRequestMutators(in *privatepb.UpdateRequest, mutators []UpdateRequestMutator) {
+	for _, mutator := range mutators {
+		mutator(in)
+	}
+}
+
 func SetUpdateRequest_Id(value string) UpdateRequestMutator {
 	return func(in *privatepb.UpdateRequest) {
 		in.Id = value
@@ -371,10 +380,5 @@ func SetUpdateRequest_Id(value string) UpdateRequestMutator {
 func SetUpdateRequest_Person(value *privatepb.Person) UpdateRequestMutator {
 	return func(in *privatepb.UpdateRequest) {
 		in.Person = value
-	}
-}
-func ApplyUpdateRequestMutators(in *privatepb.UpdateRequest, mutators []UpdateRequestMutator) {
-	for _, mutator := range mutators {
-		mutator(in)
 	}
 }

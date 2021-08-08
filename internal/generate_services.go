@@ -1319,31 +1319,30 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 }
 
 func generateMutators(file *protogen.GeneratedFile, service *Service) error {
+	var serviceMutators []ServiceMutatorGenerator
 	for _, method := range service.Methods {
 		messageName := method.Input.GoIdent.GoName
-		file.P("type ", messageName, "Mutator func(*privatepb.", messageName, ")")
 
+		var fields []MutatorField
 		for _, field := range method.Input.Fields {
-			fieldName := field.GoName
 			fieldType, err := findFieldType("privatepb", field)
 			if err != nil {
 				return fmt.Errorf("failed to generate mutator for %s: %w", messageName, err)
 			}
-			file.P("func Set", messageName, "_", fieldName, "(value ", fieldType, ") ", messageName, "Mutator {")
-			file.P("return func(in *privatepb.", messageName, ") {")
-			file.P("in.", fieldName, "= value")
-			file.P("}")
-			file.P("}")
+
+			fields = append(fields, MutatorField{
+				FieldName: field.GoName,
+				FieldType: fieldType,
+			})
 		}
 
-		file.P("func Apply", messageName, "Mutators(in *privatepb.", messageName, ", mutators []", messageName, "Mutator) {")
-		file.P("for _, mutator := range mutators {")
-		file.P("mutator(in)")
-		file.P("}")
-		file.P("}")
+		serviceMutators = append(serviceMutators, ServiceMutatorGenerator{
+			MessageName: messageName,
+			Fields:      fields,
+		})
 	}
 
-	return nil
+	return execute("service_mutators", templateServiceMutators, file, serviceMutators)
 }
 
 func fieldMatch(a, b *protogen.Field) bool {
