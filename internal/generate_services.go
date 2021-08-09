@@ -121,22 +121,21 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 		next.GoServiceImportPath.Ident("next"),
 	)
 
-	file.P("package ", service.GoPackageName)
-	file.P("import (")
-	for _, ident := range imports {
-		file.P(ident.GoName, ident.GoImportPath)
+	g := ServiceStructGenerator{
+		PluginVersion: pluginVersion,
+		GoPackageName: service.GoPackageName,
+		Imports:       imports,
+		Fields: []string{
+			"Converter",
+			"Private *private.Service",
+			"Next *next.Service",
+			fmt.Sprintf("publicpb.%sServer", service.GoName),
+		},
 	}
-	file.P(")")
 
-	logger.Printf("package=%s at=import-usage", service.GoPackageName)
-	generateImportUsage(file)
-	logger.Printf("package=%s at=service-struct", service.GoPackageName)
-	generateServiceStruct(file,
-		"Converter",
-		"Private *private.Service",
-		"Next *next.Service",
-		fmt.Sprintf("publicpb.%sServer", service.GoName),
-	)
+	if err := g.Generate(file); err != nil {
+		return err
+	}
 
 	logger.Printf("package=%s at=generate-validators", service.GoPackageName)
 	if err := generateServiceValidators(file, "publicpb", service); err != nil {
