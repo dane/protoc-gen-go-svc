@@ -40,17 +40,18 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 		service.GoImportPath.Ident("privatepb"),
 	)
 
-	file.P("package ", service.GoPackageName)
-	file.P("import (")
-	for _, ident := range imports {
-		file.P(ident.GoName, ident.GoImportPath)
+	g := ServiceStructGenerator{
+		PluginVersion: pluginVersion,
+		GoPackageName: service.GoPackageName,
+		Imports:       imports,
+		Fields: []string{
+			fmt.Sprintf("Impl privatepb.%sServer", service.GoName),
+		},
 	}
-	file.P(")")
 
-	generateImportUsage(file)
-	generateServiceStruct(file,
-		fmt.Sprintf("Impl privatepb.%sServer", service.GoName),
-	)
+	if err := g.Generate(file); err != nil {
+		return err
+	}
 
 	if err := generateServiceMethods(file, service, PrivateService); err != nil {
 		return err
