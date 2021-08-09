@@ -75,19 +75,20 @@ func generateLatestPublicService(file *protogen.GeneratedFile, service *Service,
 		private.GoServiceImportPath.Ident("private"),
 	)
 
-	file.P("package ", service.GoPackageName)
-	file.P("import (")
-	for _, ident := range imports {
-		file.P(ident.GoName, ident.GoImportPath)
+	g := ServiceStructGenerator{
+		PluginVersion: pluginVersion,
+		GoPackageName: service.GoPackageName,
+		Imports:       imports,
+		Fields: []string{
+			"Converter",
+			"Private *private.Service",
+			fmt.Sprintf("publicpb.%sServer", service.GoName),
+		},
 	}
-	file.P(")")
 
-	generateImportUsage(file)
-	generateServiceStruct(file,
-		"Converter",
-		"Private *private.Service",
-		fmt.Sprintf("publicpb.%sServer", service.GoName),
-	)
+	if err := g.Generate(file); err != nil {
+		return err
+	}
 
 	if err := generateServiceMethods(file, service, LatestPublicService); err != nil {
 		return err
