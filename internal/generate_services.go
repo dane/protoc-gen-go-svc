@@ -36,14 +36,12 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 }
 
 func generatePrivateService(file *protogen.GeneratedFile, service *Service) error {
-	imports := commonImports(
-		service.GoImportPath.Ident("privatepb"),
-	)
-
 	g := ServiceStructGenerator{
 		PluginVersion: pluginVersion,
 		GoPackageName: service.GoPackageName,
-		Imports:       imports,
+		Imports: []protogen.GoIdent{
+			service.GoImportPath.Ident("privatepb"),
+		},
 		Fields: []string{
 			fmt.Sprintf("Impl privatepb.%sServer", service.GoName),
 		},
@@ -70,16 +68,15 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 
 func generateLatestPublicService(file *protogen.GeneratedFile, service *Service, chain []*Service) error {
 	private := chain[len(chain)-1]
-	imports := commonImports(
-		service.GoImportPath.Ident("publicpb"),
-		private.GoImportPath.Ident("privatepb"),
-		private.GoServiceImportPath.Ident("private"),
-	)
 
 	g := ServiceStructGenerator{
 		PluginVersion: pluginVersion,
 		GoPackageName: service.GoPackageName,
-		Imports:       imports,
+		Imports: []protogen.GoIdent{
+			service.GoImportPath.Ident("publicpb"),
+			private.GoImportPath.Ident("privatepb"),
+			private.GoServiceImportPath.Ident("private"),
+		},
 		Fields: []string{
 			"Converter",
 			"Private *private.Service",
@@ -115,18 +112,17 @@ func generateLatestPublicService(file *protogen.GeneratedFile, service *Service,
 func generatePublicService(file *protogen.GeneratedFile, service *Service, chain []*Service) error {
 	next := chain[0]
 	private := chain[len(chain)-1]
-	imports := commonImports(
-		service.GoImportPath.Ident("publicpb"),
-		next.GoImportPath.Ident("nextpb"),
-		private.GoImportPath.Ident("privatepb"),
-		private.GoServiceImportPath.Ident("private"),
-		next.GoServiceImportPath.Ident("next"),
-	)
 
 	g := ServiceStructGenerator{
 		PluginVersion: pluginVersion,
 		GoPackageName: service.GoPackageName,
-		Imports:       imports,
+		Imports: []protogen.GoIdent{
+			service.GoImportPath.Ident("publicpb"),
+			next.GoImportPath.Ident("nextpb"),
+			private.GoImportPath.Ident("privatepb"),
+			private.GoServiceImportPath.Ident("private"),
+			next.GoServiceImportPath.Ident("next"),
+		},
 		Fields: []string{
 			"Converter",
 			"Private *private.Service",
@@ -1014,17 +1010,6 @@ func generateConverterToNextIface(file *protogen.GeneratedFile, v interface{}, c
 	file.P("ToPublic", publicName, "(", pointer, "nextpb.", nextName, privateRef, ") (", pointer, "publicpb.", publicName, ", error)")
 
 	return nil
-}
-
-func commonImports(imports ...protogen.GoIdent) []protogen.GoIdent {
-	return append([]protogen.GoIdent{
-		protogen.GoImportPath("fmt").Ident("fmt"),
-		protogen.GoImportPath("context").Ident("context"),
-		protogen.GoImportPath("github.com/go-ozzo/ozzo-validation/v4").Ident("validation"),
-		protogen.GoImportPath("github.com/go-ozzo/ozzo-validation/v4/is").Ident("is"),
-		protogen.GoImportPath("google.golang.org/grpc/codes").Ident("codes"),
-		protogen.GoImportPath("google.golang.org/grpc/status").Ident("status"),
-	}, imports...)
 }
 
 func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {

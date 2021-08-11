@@ -4,9 +4,15 @@
 package {{ .GoPackageName }}
 
 import (
-{{ range .Imports -}}
-	{{ .GoName }} {{ .GoImportPath }}
-{{ end -}}
+	fmt "fmt"
+	context "context"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	is "github.com/go-ozzo/ozzo-validation/v4/is"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	{{ range .Imports -}}
+		{{ .GoName }} {{ .GoImportPath }}
+	{{ end -}}
 )
 
 var (
