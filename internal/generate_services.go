@@ -27,14 +27,7 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*generators.S
 	services := chain[:len(chain)-1]
 	sort.Sort(sort.Reverse(byPackageName(services)))
 
-	g := ServiceRegisterGenerator{
-		PluginVersion: pluginVersion,
-		Imports:       imports,
-		Services:      services,
-		Private:       private,
-	}
-
-	return g.Generate(file)
+	return generators.NewServiceRegister(imports, services, private).Generate(file)
 }
 
 func generatePrivateService(file *protogen.GeneratedFile, service *generators.Service) error {
