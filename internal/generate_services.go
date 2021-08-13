@@ -7,9 +7,11 @@ import (
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
+
+	"github.com/dane/protoc-gen-go-svc/internal/generators"
 )
 
-func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) error {
+func generateServiceRegister(file *protogen.GeneratedFile, chain []*generators.Service) error {
 	imports := []protogen.GoIdent{
 		protogen.GoImportPath("google.golang.org/grpc").Ident("grpc"),
 	}
@@ -35,7 +37,7 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*Service) err
 	return g.Generate(file)
 }
 
-func generatePrivateService(file *protogen.GeneratedFile, service *Service) error {
+func generatePrivateService(file *protogen.GeneratedFile, service *generators.Service) error {
 	g := ServiceStructGenerator{
 		PluginVersion: pluginVersion,
 		GoPackageName: service.GoPackageName,
@@ -66,7 +68,7 @@ func generatePrivateService(file *protogen.GeneratedFile, service *Service) erro
 	return nil
 }
 
-func generateLatestPublicService(file *protogen.GeneratedFile, service *Service, chain []*Service) error {
+func generateLatestPublicService(file *protogen.GeneratedFile, service *generators.Service, chain []*generators.Service) error {
 	private := chain[len(chain)-1]
 
 	g := ServiceStructGenerator{
@@ -109,7 +111,7 @@ func generateLatestPublicService(file *protogen.GeneratedFile, service *Service,
 	return nil
 }
 
-func generatePublicService(file *protogen.GeneratedFile, service *Service, chain []*Service) error {
+func generatePublicService(file *protogen.GeneratedFile, service *generators.Service, chain []*generators.Service) error {
 	next := chain[0]
 	private := chain[len(chain)-1]
 
@@ -166,7 +168,7 @@ func generatePublicService(file *protogen.GeneratedFile, service *Service, chain
 	return nil
 }
 
-func generateConverters(file *protogen.GeneratedFile, service *Service, chain []*Service, serviceType ServiceType) error {
+func generateConverters(file *protogen.GeneratedFile, service *generators.Service, chain []*generators.Service, serviceType ServiceType) error {
 	next := chain[0]
 	private := chain[len(chain)-1]
 
@@ -379,15 +381,15 @@ func generateConverters(file *protogen.GeneratedFile, service *Service, chain []
 	return nil
 }
 
-func generateConverterToNextEnum(file *protogen.GeneratedFile, enum *protogen.Enum, next *Service) error {
+func generateConverterToNextEnum(file *protogen.GeneratedFile, enum *protogen.Enum, next *generators.Service) error {
 	return generateConverterToDstEnum(file, enum, "Next", "publicpb", "nextpb", next)
 }
 
-func generateConverterToPrivateEnum(file *protogen.GeneratedFile, enum *protogen.Enum, private *Service) error {
+func generateConverterToPrivateEnum(file *protogen.GeneratedFile, enum *protogen.Enum, private *generators.Service) error {
 	return generateConverterToDstEnum(file, enum, "Private", "publicpb", "privatepb", private)
 }
 
-func generateConverterToPublicEnum(file *protogen.GeneratedFile, enum *protogen.Enum, isDeprecated bool, nextPackageName string, next *Service) error {
+func generateConverterToPublicEnum(file *protogen.GeneratedFile, enum *protogen.Enum, isDeprecated bool, nextPackageName string, next *generators.Service) error {
 	nextEnum, err := findNextEnum(enum, next)
 	if err != nil {
 		return err
@@ -436,7 +438,7 @@ func generateConverterToPublicEnum(file *protogen.GeneratedFile, enum *protogen.
 	return nil
 }
 
-func generateConverterToDeprecatedPublicEnum(file *protogen.GeneratedFile, enum *protogen.Enum, chain []*Service) error {
+func generateConverterToDeprecatedPublicEnum(file *protogen.GeneratedFile, enum *protogen.Enum, chain []*generators.Service) error {
 	privateEnum, err := findPrivateEnum(enum, chain)
 	if err != nil {
 		return err
@@ -481,7 +483,7 @@ func generateConverterToDeprecatedPublicEnum(file *protogen.GeneratedFile, enum 
 	return nil
 }
 
-func generateConverterToDstEnum(file *protogen.GeneratedFile, enum *protogen.Enum, dst, inPackageName, nextPackageName string, next *Service) error {
+func generateConverterToDstEnum(file *protogen.GeneratedFile, enum *protogen.Enum, dst, inPackageName, nextPackageName string, next *generators.Service) error {
 	nextEnum, err := findNextEnum(enum, next)
 	if err != nil {
 		return err
@@ -512,15 +514,15 @@ func generateConverterToDstEnum(file *protogen.GeneratedFile, enum *protogen.Enu
 	return nil
 }
 
-func generateConverterToPrivateFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, private *Service) error {
+func generateConverterToPrivateFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, private *generators.Service) error {
 	return generateConverterMessageFunc(file, "Private", "privatepb", publicIn, private)
 }
 
-func generateConverterToNextFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, next *Service) error {
+func generateConverterToNextFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, next *generators.Service) error {
 	return generateConverterMessageFunc(file, "Next", "nextpb", publicIn, next)
 }
 
-func generateConverterMessageFunc(file *protogen.GeneratedFile, dst, packageName string, publicIn *protogen.Message, next *Service) error {
+func generateConverterMessageFunc(file *protogen.GeneratedFile, dst, packageName string, publicIn *protogen.Message, next *generators.Service) error {
 	nextIn, err := findNextMessage(publicIn, next)
 	if err != nil {
 		return err
@@ -597,7 +599,7 @@ func generateConverterMessageFunc(file *protogen.GeneratedFile, dst, packageName
 	return nil
 }
 
-func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, isDeprecated bool, service, private *Service) error {
+func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publicIn *protogen.Message, isDeprecated bool, service, private *generators.Service) error {
 	privateIn, err := findNextMessage(publicIn, private)
 	if err != nil {
 		return err
@@ -680,7 +682,7 @@ func generateConverterToPublicFromPrivateFunc(file *protogen.GeneratedFile, publ
 	return nil
 }
 
-func generateConverterFieldToPublicFromPrivate(file *protogen.GeneratedFile, privateVarName string, field *protogen.Field, privateIn *protogen.Message, isDeprecated bool, service *Service) error {
+func generateConverterFieldToPublicFromPrivate(file *protogen.GeneratedFile, privateVarName string, field *protogen.Field, privateIn *protogen.Message, isDeprecated bool, service *generators.Service) error {
 	publicFieldName := field.GoName
 	privateField, err := findNextField(field, privateIn)
 	if err != nil {
@@ -719,7 +721,7 @@ func generateConverterFieldToPublicFromPrivate(file *protogen.GeneratedFile, pri
 	return nil
 }
 
-func generateConverterFieldToPublicFromNext(file *protogen.GeneratedFile, field *protogen.Field, publicIn *protogen.Message, chain []*Service) error {
+func generateConverterFieldToPublicFromNext(file *protogen.GeneratedFile, field *protogen.Field, publicIn *protogen.Message, chain []*generators.Service) error {
 	next := chain[0]
 
 	nextIn, err := findNextMessage(publicIn, next)
@@ -760,7 +762,7 @@ func generateConverterFieldToPublicFromNext(file *protogen.GeneratedFile, field 
 	return nil
 }
 
-func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicIn *protogen.Message, service *Service, chain []*Service) error {
+func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicIn *protogen.Message, service *generators.Service, chain []*generators.Service) error {
 	next := chain[0]
 
 	nextIn, err := findNextMessage(publicIn, next)
@@ -908,7 +910,7 @@ func generateConverterToPublicFuncFromNext(file *protogen.GeneratedFile, publicI
 	return nil
 }
 
-func generateConverterToPrivateIface(file *protogen.GeneratedFile, publicIn, publicOut interface{}, isDeprecated bool, private *Service) error {
+func generateConverterToPrivateIface(file *protogen.GeneratedFile, publicIn, publicOut interface{}, isDeprecated bool, private *generators.Service) error {
 	publicInName, privateInName, publicInPointer, err := generateConverterMessageNamesAndPointers(publicIn, private)
 	if err != nil {
 		return err
@@ -927,7 +929,7 @@ func generateConverterToPrivateIface(file *protogen.GeneratedFile, publicIn, pub
 	return nil
 }
 
-func generateConverterDeprecatedToPrivateIface(file *protogen.GeneratedFile, publicOut interface{}, private *Service) error {
+func generateConverterDeprecatedToPrivateIface(file *protogen.GeneratedFile, publicOut interface{}, private *generators.Service) error {
 	publicOutName, privateOutName, pointer, err := generateConverterMessageNamesAndPointers(publicOut, private)
 	if err != nil {
 		return err
@@ -937,7 +939,7 @@ func generateConverterDeprecatedToPrivateIface(file *protogen.GeneratedFile, pub
 	return nil
 }
 
-func generateConverterMessageNamesAndPointers(pub interface{}, private *Service) (string, string, string, error) {
+func generateConverterMessageNamesAndPointers(pub interface{}, private *generators.Service) (string, string, string, error) {
 	var publicName, privateName, pointer string
 	switch pub.(type) {
 	case *protogen.Message:
@@ -966,7 +968,7 @@ func generateConverterMessageNamesAndPointers(pub interface{}, private *Service)
 	return publicName, privateName, pointer, nil
 }
 
-func generateConverterToNextIface(file *protogen.GeneratedFile, v interface{}, chain []*Service) error {
+func generateConverterToNextIface(file *protogen.GeneratedFile, v interface{}, chain []*generators.Service) error {
 	next := chain[0]
 	var publicName, privateName, nextName, pointer, privateRef string
 	switch v.(type) {
@@ -1029,7 +1031,7 @@ func generateServiceStruct(file *protogen.GeneratedFile, refs ...string) {
 	file.P("}")
 }
 
-func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serviceType ServiceType) error {
+func generateServiceMethods(file *protogen.GeneratedFile, service *generators.Service, serviceType ServiceType) error {
 	for _, method := range service.Methods {
 		g := ServiceMethodGenerator{
 			MethodName: method.GoName,
@@ -1053,7 +1055,7 @@ func generateServiceMethods(file *protogen.GeneratedFile, service *Service, serv
 	return nil
 }
 
-func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *protogen.Method, private *Service) error {
+func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *protogen.Method, private *generators.Service) error {
 	privateMethod, err := findNextMethod(method, private)
 	if err != nil {
 		return fmt.Errorf("failed to generate service %s method impl: %w", method.GoName, err)
@@ -1089,7 +1091,7 @@ func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *pr
 	return g.Generate(file)
 }
 
-func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *protogen.Method, chain []*Service) error {
+func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *protogen.Method, chain []*generators.Service) error {
 	next := chain[0]
 	nextMethod, err := findNextMethod(method, next)
 	if err != nil {
@@ -1138,7 +1140,7 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 	return g.Generate(file)
 }
 
-func generateServiceValidators(file *protogen.GeneratedFile, packageName string, service *Service) error {
+func generateServiceValidators(file *protogen.GeneratedFile, packageName string, service *generators.Service) error {
 	file.P(`const ValidatorName = "`, service.Desc.FullName(), `.Validator"`)
 	file.P("func NewValidator() Validator { return validator{} }")
 
@@ -1304,7 +1306,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	return nil
 }
 
-func generateMutators(file *protogen.GeneratedFile, service *Service) error {
+func generateMutators(file *protogen.GeneratedFile, service *generators.Service) error {
 	var serviceMutators []ServiceMutatorGenerator
 	for _, method := range service.Methods {
 		messageName := method.Input.GoIdent.GoName
@@ -1347,6 +1349,6 @@ func fieldMatch(a, b *protogen.Field) bool {
 	return true
 }
 
-func isServiceMessage(service *Service, message *protogen.Message) bool {
+func isServiceMessage(service *generators.Service, message *protogen.Message) bool {
 	return service.GoImportPath == message.GoIdent.GoImportPath
 }

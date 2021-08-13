@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"text/template"
+
+	"github.com/dane/protoc-gen-go-svc/internal/generators"
 )
 
 var (
@@ -41,7 +43,7 @@ func execute(name string, templateStr string, w io.Writer, params interface{}) e
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"sprintf": fmt.Sprintf,
-		"previous": func(current *Service, services []*Service) *Service {
+		"previous": func(current *generators.Service, services []*generators.Service) *generators.Service {
 			for i, service := range services {
 				if current == service {
 					return services[i-1]

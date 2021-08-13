@@ -4,13 +4,15 @@ import (
 	"io"
 
 	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/dane/protoc-gen-go-svc/internal/generators"
 )
 
 type ServiceRegisterGenerator struct {
 	PluginVersion string
 	Imports       []protogen.GoIdent
-	Services      []*Service
-	Private       *Service
+	Services      []*generators.Service
+	Private       *generators.Service
 }
 
 func (g *ServiceRegisterGenerator) Generate(w io.Writer) error {
