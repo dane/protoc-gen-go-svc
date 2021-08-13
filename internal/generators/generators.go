@@ -1,17 +1,11 @@
 package generators
 
 import (
-	_ "embed"
 	"fmt"
 	"io"
 	"text/template"
 
 	"google.golang.org/protobuf/compiler/protogen"
-)
-
-var (
-	//go:embed templates/service_register.go.tmpl
-	templateServiceRegister string
 )
 
 type Generator interface {

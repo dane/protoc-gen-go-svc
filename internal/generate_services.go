@@ -31,17 +31,9 @@ func generateServiceRegister(file *protogen.GeneratedFile, chain []*generators.S
 }
 
 func generatePrivateService(file *protogen.GeneratedFile, service *generators.Service) error {
-	g := ServiceStructGenerator{
-		PluginVersion: pluginVersion,
-		GoPackageName: service.GoPackageName,
-		Imports: []protogen.GoIdent{
-			service.GoImportPath.Ident("privatepb"),
-		},
-		Fields: []string{
-			fmt.Sprintf("Impl privatepb.%sServer", service.GoName),
-		},
-	}
-
+	imports := []protogen.GoIdent{service.GoImportPath.Ident("privatepb")}
+	fields := []string{fmt.Sprintf("Impl privatepb.%sServer", service.GoName)}
+	g := generators.NewServiceStruct(imports, service, fields)
 	if err := g.Generate(file); err != nil {
 		return err
 	}
@@ -64,21 +56,19 @@ func generatePrivateService(file *protogen.GeneratedFile, service *generators.Se
 func generateLatestPublicService(file *protogen.GeneratedFile, service *generators.Service, chain []*generators.Service) error {
 	private := chain[len(chain)-1]
 
-	g := ServiceStructGenerator{
-		PluginVersion: pluginVersion,
-		GoPackageName: service.GoPackageName,
-		Imports: []protogen.GoIdent{
-			service.GoImportPath.Ident("publicpb"),
-			private.GoImportPath.Ident("privatepb"),
-			private.GoServiceImportPath.Ident("private"),
-		},
-		Fields: []string{
-			"Converter",
-			"Private *private.Service",
-			fmt.Sprintf("publicpb.%sServer", service.GoName),
-		},
+	imports := []protogen.GoIdent{
+		service.GoImportPath.Ident("publicpb"),
+		private.GoImportPath.Ident("privatepb"),
+		private.GoServiceImportPath.Ident("private"),
 	}
 
+	fields := []string{
+		"Converter",
+		"Private *private.Service",
+		fmt.Sprintf("publicpb.%sServer", service.GoName),
+	}
+
+	g := generators.NewServiceStruct(imports, service, fields)
 	if err := g.Generate(file); err != nil {
 		return err
 	}
@@ -108,24 +98,22 @@ func generatePublicService(file *protogen.GeneratedFile, service *generators.Ser
 	next := chain[0]
 	private := chain[len(chain)-1]
 
-	g := ServiceStructGenerator{
-		PluginVersion: pluginVersion,
-		GoPackageName: service.GoPackageName,
-		Imports: []protogen.GoIdent{
-			service.GoImportPath.Ident("publicpb"),
-			next.GoImportPath.Ident("nextpb"),
-			private.GoImportPath.Ident("privatepb"),
-			private.GoServiceImportPath.Ident("private"),
-			next.GoServiceImportPath.Ident("next"),
-		},
-		Fields: []string{
-			"Converter",
-			"Private *private.Service",
-			"Next *next.Service",
-			fmt.Sprintf("publicpb.%sServer", service.GoName),
-		},
+	imports := []protogen.GoIdent{
+		service.GoImportPath.Ident("publicpb"),
+		next.GoImportPath.Ident("nextpb"),
+		private.GoImportPath.Ident("privatepb"),
+		private.GoServiceImportPath.Ident("private"),
+		next.GoServiceImportPath.Ident("next"),
 	}
 
+	fields := []string{
+		"Converter",
+		"Private *private.Service",
+		"Next *next.Service",
+		fmt.Sprintf("publicpb.%sServer", service.GoName),
+	}
+
+	g := generators.NewServiceStruct(imports, service, fields)
 	if err := g.Generate(file); err != nil {
 		return err
 	}
@@ -1013,15 +1001,6 @@ func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {
 	for _, ref := range refs {
 		file.P("var _ =", ref)
 	}
-}
-
-func generateServiceStruct(file *protogen.GeneratedFile, refs ...string) {
-	file.P("type Service struct {")
-	file.P("Validator")
-	for _, ref := range refs {
-		file.P(ref)
-	}
-	file.P("}")
 }
 
 func generateServiceMethods(file *protogen.GeneratedFile, service *generators.Service, serviceType ServiceType) error {

@@ -21,9 +21,6 @@ var (
 
 	//go:embed templates/partial_service_mutators.go.tmpl
 	templateServiceMutators string
-
-	//go:embed templates/partial_service_struct.go.tmpl
-	templateServiceStruct string
 )
 
 func execute(name string, templateStr string, w io.Writer, params interface{}) error {
