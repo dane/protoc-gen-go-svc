@@ -6,9 +6,11 @@ import (
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
+
+	"github.com/dane/protoc-gen-go-svc/internal/generators"
 )
 
-func findNextMethod(method *protogen.Method, next *Service) (*protogen.Method, error) {
+func findNextMethod(method *protogen.Method, next *generators.Service) (*protogen.Method, error) {
 	methodName := method.GoName
 	name, err := delegateMethodName(method)
 	if err != nil {
@@ -28,7 +30,7 @@ func findNextMethod(method *protogen.Method, next *Service) (*protogen.Method, e
 	return nil, fmt.Errorf("failed to find next method for %s", methodName)
 }
 
-func findNextEnum(enum *protogen.Enum, next *Service) (*protogen.Enum, error) {
+func findNextEnum(enum *protogen.Enum, next *generators.Service) (*protogen.Enum, error) {
 	enumName := enum.GoIdent.GoName
 	name, err := delegateEnumName(enum)
 	if err != nil {
@@ -87,7 +89,7 @@ func findReceiveEnumValues(value *protogen.EnumValue, nextEnum *protogen.Enum) (
 	return values, nil
 }
 
-func findNextMessage(message *protogen.Message, next *Service) (*protogen.Message, error) {
+func findNextMessage(message *protogen.Message, next *generators.Service) (*protogen.Message, error) {
 	messageName := message.GoIdent.GoName
 	name, err := delegateMessageName(message)
 	if err != nil {
@@ -188,7 +190,7 @@ func findFieldType(packageName string, field *protogen.Field) (string, error) {
 	return "", fmt.Errorf("unexpected field %s for type lookup", field.GoName)
 }
 
-func findPrivateMethod(method *protogen.Method, chain []*Service) (*protogen.Method, error) {
+func findPrivateMethod(method *protogen.Method, chain []*generators.Service) (*protogen.Method, error) {
 	targetMethod := method
 	var err error
 	for _, next := range chain {
@@ -200,7 +202,7 @@ func findPrivateMethod(method *protogen.Method, chain []*Service) (*protogen.Met
 	return targetMethod, nil
 }
 
-func findPrivateMessage(message *protogen.Message, chain []*Service) (*protogen.Message, error) {
+func findPrivateMessage(message *protogen.Message, chain []*generators.Service) (*protogen.Message, error) {
 	targetMessage := message
 	var err error
 	for _, next := range chain {
@@ -212,7 +214,7 @@ func findPrivateMessage(message *protogen.Message, chain []*Service) (*protogen.
 	return targetMessage, nil
 }
 
-func findPrivateEnum(enum *protogen.Enum, chain []*Service) (*protogen.Enum, error) {
+func findPrivateEnum(enum *protogen.Enum, chain []*generators.Service) (*protogen.Enum, error) {
 	targetEnum := enum
 	var err error
 	for _, next := range chain {
@@ -224,7 +226,7 @@ func findPrivateEnum(enum *protogen.Enum, chain []*Service) (*protogen.Enum, err
 	return targetEnum, nil
 }
 
-func findPrivateEnumValue(value *protogen.EnumValue, enum *protogen.Enum, chain []*Service) (*protogen.EnumValue, error) {
+func findPrivateEnumValue(value *protogen.EnumValue, enum *protogen.Enum, chain []*generators.Service) (*protogen.EnumValue, error) {
 	targetValue := value
 	targetEnum := enum
 	var err error
@@ -244,7 +246,7 @@ func findPrivateEnumValue(value *protogen.EnumValue, enum *protogen.Enum, chain 
 	return targetValue, nil
 }
 
-func findPrivateReceiveEnumValues(value *protogen.EnumValue, enum *protogen.Enum, chain []*Service) ([]*protogen.EnumValue, error) {
+func findPrivateReceiveEnumValues(value *protogen.EnumValue, enum *protogen.Enum, chain []*generators.Service) ([]*protogen.EnumValue, error) {
 	privateEnum, err := findPrivateEnum(enum, chain)
 	if err != nil {
 		return nil, err
@@ -268,7 +270,7 @@ func findPrivateReceiveEnumValues(value *protogen.EnumValue, enum *protogen.Enum
 	return values, nil
 }
 
-func findPrivateOneof(oneof *protogen.Oneof, message *protogen.Message, chain []*Service) (*protogen.Oneof, error) {
+func findPrivateOneof(oneof *protogen.Oneof, message *protogen.Message, chain []*generators.Service) (*protogen.Oneof, error) {
 	targetMessage := message
 	targetOneof := oneof
 
@@ -287,7 +289,7 @@ func findPrivateOneof(oneof *protogen.Oneof, message *protogen.Message, chain []
 	return targetOneof, nil
 }
 
-func findPrivateOneofField(field *protogen.Field, oneof *protogen.Oneof, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
+func findPrivateOneofField(field *protogen.Field, oneof *protogen.Oneof, message *protogen.Message, chain []*generators.Service) (*protogen.Field, error) {
 	targetMessage := message
 	targetOneof := oneof
 	targetField := field
@@ -312,7 +314,7 @@ func findPrivateOneofField(field *protogen.Field, oneof *protogen.Oneof, message
 	return targetField, nil
 }
 
-func findPrivateField(field *protogen.Field, message *protogen.Message, chain []*Service) (*protogen.Field, error) {
+func findPrivateField(field *protogen.Field, message *protogen.Message, chain []*generators.Service) (*protogen.Field, error) {
 	targetMessage := message
 	targetField := field
 

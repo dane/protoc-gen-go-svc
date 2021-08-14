@@ -1,0 +1,16 @@
+{{- $messageName := .MessageName -}}
+type {{ $messageName }}Mutator func(*privatepb.{{ $messageName }})
+
+func Apply{{ $messageName }}Mutators(in *privatepb.{{ $messageName }}, mutators []{{ $messageName }}Mutator) {
+	for _, mutator := range mutators {
+		mutator(in)
+	}
+}
+
+{{ range $field := .Fields -}}
+	func Set{{ $messageName }}_{{ $field.FieldName }}(value {{ $field.FieldType }}) {{ $messageName }}Mutator {
+		return func(in *privatepb.{{ $messageName }}) {
+			in.{{ $field.FieldName }} = value
+		}
+	}
+{{ end -}}

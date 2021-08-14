@@ -10,23 +10,12 @@ import (
 	"sort"
 
 	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/dane/protoc-gen-go-svc/internal/generators"
 )
 
 type Generator struct {
 	Verbose bool
-}
-
-type Service struct {
-	protogen.GoPackageName
-	protogen.GoIdent
-	*protogen.Service
-
-	GoName              string
-	GoServiceImportPath protogen.GoImportPath
-	Messages            []*protogen.Message
-	Enums               []*protogen.Enum
-	DeprecatedMessages  []*protogen.Message
-	DeprecatedEnums     []*protogen.Enum
 }
 
 type ServiceType int
@@ -36,10 +25,6 @@ const (
 	LatestPublicService
 	PrivateService
 )
-
-func (s *Service) PackageName() string {
-	return fmt.Sprintf("%s", s.GoPackageName)
-}
 
 const (
 	// GenSvc is the annotation prefix for protoc-gen-go-svc.
@@ -77,8 +62,8 @@ func (g *Generator) Run(plugin *protogen.Plugin) error {
 	}
 	logger = log.New(dst, "", 0)
 
-	var services []*Service
-	var private *Service
+	var services []*generators.Service
+	var private *generators.Service
 	messages := make(map[protogen.GoImportPath]map[string]*protogen.Message)
 	enums := make(map[protogen.GoImportPath]map[string]*protogen.Enum)
 
@@ -88,7 +73,7 @@ func (g *Generator) Run(plugin *protogen.Plugin) error {
 		}
 
 		for _, service := range file.Services {
-			svc := &Service{
+			svc := &generators.Service{
 				GoIdent:       file.GoDescriptorIdent,
 				GoPackageName: file.GoPackageName,
 				GoName:        service.GoName,

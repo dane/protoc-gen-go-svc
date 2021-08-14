@@ -1,9 +1,13 @@
 package internal
 
-import "google.golang.org/protobuf/compiler/protogen"
+import (
+	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/dane/protoc-gen-go-svc/internal/generators"
+)
 
 // byPackageName sort services by package name
-type byPackageName []*Service
+type byPackageName []*generators.Service
 
 func (s byPackageName) Len() int {
 	return len(s)
