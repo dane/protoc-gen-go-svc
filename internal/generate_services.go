@@ -1272,30 +1272,28 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 }
 
 func generateMutators(file *protogen.GeneratedFile, service *generators.Service) error {
-	var serviceMutators []ServiceMutatorGenerator
 	for _, method := range service.Methods {
 		messageName := method.Input.GoIdent.GoName
 
-		var fields []MutatorField
+		var fields []generators.MutatorField
 		for _, field := range method.Input.Fields {
 			fieldType, err := findFieldType("privatepb", field)
 			if err != nil {
 				return fmt.Errorf("failed to generate mutator for %s: %w", messageName, err)
 			}
 
-			fields = append(fields, MutatorField{
+			fields = append(fields, generators.MutatorField{
 				FieldName: field.GoName,
 				FieldType: fieldType,
 			})
 		}
 
-		serviceMutators = append(serviceMutators, ServiceMutatorGenerator{
-			MessageName: messageName,
-			Fields:      fields,
-		})
+		if err := generators.NewServiceMutators(messageName, fields).Generate(file); err != nil {
+			return err
+		}
 	}
 
-	return execute("service_mutators", templateServiceMutators, file, serviceMutators)
+	return nil
 }
 
 func fieldMatch(a, b *protogen.Field) bool {
