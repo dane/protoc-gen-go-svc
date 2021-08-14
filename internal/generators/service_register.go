@@ -17,8 +17,7 @@ func NewServiceRegister(imports []protogen.GoIdent, services []*Service, private
 }
 
 type serviceRegister struct {
-	PluginVersion string
-	Imports       []protogen.GoIdent
-	Services      []*Service
-	Private       *Service
+	Imports  []protogen.GoIdent
+	Services []*Service
+	Private  *Service
 }

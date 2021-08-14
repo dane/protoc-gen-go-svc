@@ -48,6 +48,9 @@ func execute(name string, templateStr string, w io.Writer, params interface{}) e
 
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{
+		"pluginVersion": func() string {
+			return version
+		},
 		"sprintf": fmt.Sprintf,
 		"previous": func(current *Service, services []*Service) *Service {
 			for i, service := range services {

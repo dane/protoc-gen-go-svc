@@ -17,7 +17,6 @@ func NewServiceStruct(imports []protogen.GoIdent, service *Service, fields []str
 }
 
 type serviceStruct struct {
-	PluginVersion string
 	GoPackageName protogen.GoPackageName
 	Imports       []protogen.GoIdent
 	Fields        []string
