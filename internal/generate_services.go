@@ -1041,17 +1041,15 @@ func generateServiceMethodToPrivateImpl(file *protogen.GeneratedFile, method *pr
 		deprecatedPrefix = "Deprecated"
 	}
 
-	g := ServiceMethodImplToPrivateGenerator{
-		Prefix: deprecatedPrefix,
-
-		MethodName: method.GoName,
-		InputName:  method.Input.GoIdent.GoName,
-		OutputName: method.Output.GoIdent.GoName,
-
-		PrivateMethodName: privateMethod.GoName,
-		PrivateInputName:  privateIn.GoIdent.GoName,
-		PrivateOutputName: privateOut.GoIdent.GoName,
-	}
+	g := generators.NewServiceMethodImplToPrivate(
+		deprecatedPrefix,
+		method.GoName,
+		method.Input.GoIdent.GoName,
+		method.Output.GoIdent.GoName,
+		privateMethod.GoName,
+		privateIn.GoIdent.GoName,
+		privateOut.GoIdent.GoName,
+	)
 
 	return g.Generate(file)
 }

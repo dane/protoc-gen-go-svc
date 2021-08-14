@@ -14,4 +14,7 @@ var (
 
 	//go:embed templates/partial_service_method_impl_to_next.go.tmpl
 	templateServiceMethodImplToNext string
+
+	//go:embed templates/partial_service_method_impl_to_private.go.tmpl
+	templateServiceMethodImplToPrivate string
 )
