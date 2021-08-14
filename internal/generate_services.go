@@ -1005,19 +1005,23 @@ func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {
 
 func generateServiceMethods(file *protogen.GeneratedFile, service *generators.Service, serviceType ServiceType) error {
 	for _, method := range service.Methods {
-		g := ServiceMethodGenerator{
-			MethodName: method.GoName,
-			InputName:  method.Input.GoIdent.GoName,
-			OutputName: method.Output.GoIdent.GoName,
-		}
+		var packageName string
+		var toPrivate bool
 
 		switch serviceType {
 		case PublicService, LatestPublicService:
-			g.PackageName = "publicpb"
+			packageName = "publicpb"
 		case PrivateService:
-			g.PackageName = "privatepb"
-			g.ToPrivate = true
+			packageName = "privatepb"
+			toPrivate = true
 		}
+
+		g := generators.NewServiceMethod(
+			packageName, method.GoName,
+			method.Input.GoIdent.GoName,
+			method.Output.GoIdent.GoName,
+			toPrivate,
+		)
 
 		if err := g.Generate(file); err != nil {
 			return err

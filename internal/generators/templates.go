@@ -8,4 +8,7 @@ var (
 
 	//go:embed templates/partial_service_struct.go.tmpl
 	templateServiceStruct string
+
+	//go:embed templates/partial_service_method.go.tmpl
+	templateServiceMethod string
 )
