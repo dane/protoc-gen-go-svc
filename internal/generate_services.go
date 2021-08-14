@@ -38,7 +38,7 @@ func generatePrivateService(file *protogen.GeneratedFile, service *generators.Se
 		return err
 	}
 
-	if err := generateServiceMethods(file, service, PrivateService); err != nil {
+	if err := generateServiceMethods(file, service, "privatepb", true); err != nil {
 		return err
 	}
 
@@ -73,7 +73,7 @@ func generateLatestPublicService(file *protogen.GeneratedFile, service *generato
 		return err
 	}
 
-	if err := generateServiceMethods(file, service, LatestPublicService); err != nil {
+	if err := generateServiceMethods(file, service, "publicpb", false); err != nil {
 		return err
 	}
 
@@ -129,7 +129,7 @@ func generatePublicService(file *protogen.GeneratedFile, service *generators.Ser
 	}
 
 	logger.Printf("package=%s at=generate-methods", service.GoPackageName)
-	if err := generateServiceMethods(file, service, PublicService); err != nil {
+	if err := generateServiceMethods(file, service, "publicpb", false); err != nil {
 		return err
 	}
 
@@ -1003,19 +1003,8 @@ func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {
 	}
 }
 
-func generateServiceMethods(file *protogen.GeneratedFile, service *generators.Service, serviceType ServiceType) error {
+func generateServiceMethods(file *protogen.GeneratedFile, service *generators.Service, packageName string, toPrivate bool) error {
 	for _, method := range service.Methods {
-		var packageName string
-		var toPrivate bool
-
-		switch serviceType {
-		case PublicService, LatestPublicService:
-			packageName = "publicpb"
-		case PrivateService:
-			packageName = "privatepb"
-			toPrivate = true
-		}
-
 		g := generators.NewServiceMethod(
 			packageName, method.GoName,
 			method.Input.GoIdent.GoName,
