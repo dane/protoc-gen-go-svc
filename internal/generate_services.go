@@ -1078,16 +1078,7 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 		return err
 	}
 
-	g := ServiceMethodImplToNextGenerator{
-		MethodName:        method.GoName,
-		InputName:         method.Input.GoIdent.GoName,
-		OutputName:        method.Output.GoIdent.GoName,
-		PrivateInputName:  privateIn.GoIdent.GoName,
-		PrivateOutputName: privateOut.GoIdent.GoName,
-		NextMethodName:    nextMethod.GoName,
-		NextInputName:     nextIn.GoIdent.GoName,
-	}
-
+	var deprecatedFields []generators.DeprecatedField
 	for _, field := range method.Input.Fields {
 		if deprecatedField(field) {
 			privateField, err := findNextField(field, privateIn)
@@ -1095,12 +1086,23 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 				return err
 			}
 
-			g.DeprecatedFields = append(g.DeprecatedFields, DeprecatedField{
+			deprecatedFields = append(deprecatedFields, generators.DeprecatedField{
 				FieldName:        field.GoName,
 				PrivateFieldName: privateField.GoName,
 			})
 		}
 	}
+
+	g := generators.NewServiceMethodImplToNext(
+		method.GoName,
+		method.Input.GoIdent.GoName,
+		method.Output.GoIdent.GoName,
+		nextMethod.GoName,
+		nextIn.GoIdent.GoName,
+		privateIn.GoIdent.GoName,
+		privateOut.GoIdent.GoName,
+		deprecatedFields,
+	)
 
 	return g.Generate(file)
 }

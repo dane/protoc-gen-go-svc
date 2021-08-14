@@ -1,8 +1,6 @@
 package generators
 
-import (
-	"io"
-)
+import "io"
 
 func NewServiceMethod(packageName, methodName, inputName, outputName string, toPrivate bool) Generator {
 	return GeneratorFunc(func(w io.Writer) error {

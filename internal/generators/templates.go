@@ -11,4 +11,7 @@ var (
 
 	//go:embed templates/partial_service_method.go.tmpl
 	templateServiceMethod string
+
+	//go:embed templates/partial_service_method_impl_to_next.go.tmpl
+	templateServiceMethodImplToNext string
 )
