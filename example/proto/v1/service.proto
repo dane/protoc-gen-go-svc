@@ -3,7 +3,7 @@ syntax = "proto3";
 package example.v1;
 
 option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v1;v1";
-option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v1;v1";
+option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service";
 
 import "google/protobuf/timestamp.proto";
 import "gen/svc/annotations.proto";
