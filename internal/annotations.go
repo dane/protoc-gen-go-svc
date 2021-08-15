@@ -2,6 +2,10 @@ package internal
 
 import "google.golang.org/protobuf/compiler/protogen"
 
+func fileGoPackage(file *protogen.File) (string, error) {
+	return driver.FileGoPackage(file)
+}
+
 func delegateMethodName(method *protogen.Method) (string, error) {
 	return driver.DelegateMethodName(method)
 }
