@@ -22,4 +22,5 @@ type Driver interface {
 	Min(field *protogen.Field) (string, bool, error)
 	Max(field *protogen.Field) (string, bool, error)
 	In(packageName string, field *protogen.Field) ([]string, error)
+	FileGoPackage(file *protogen.File) (string, error)
 }

@@ -25,6 +25,16 @@ func NewOptionDriver(inputs, outputs map[*protogen.Message]struct{}) Driver {
 	}
 }
 
+func (o optionDriver) FileGoPackage(file *protogen.File) (string, error) {
+	options := file.Desc.Options().(*descriptorpb.FileOptions)
+	annotation := proto.GetExtension(options, svc.E_GoPackage).(string)
+	if annotation == "" {
+		return "", fmt.Errorf("option (gen.svc.go_package) not defined in file %q", file.Desc.Path())
+	}
+
+	return annotation, nil
+}
+
 func (o optionDriver) DelegateMethodName(method *protogen.Method) (string, error) {
 	options := method.Desc.Options().(*descriptorpb.MethodOptions)
 	annotation := proto.GetExtension(options, svc.E_Method).(*svc.MethodAnnotation)

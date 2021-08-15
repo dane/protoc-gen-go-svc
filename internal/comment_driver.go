@@ -20,6 +20,10 @@ func NewCommentDriver(inputs, outputs map[*protogen.Message]struct{}) Driver {
 	}
 }
 
+func (c commentDriver) FileGoPackage(file *protogen.File) (string, error) {
+	return "", nil
+}
+
 func (c commentDriver) DelegateMethodName(method *protogen.Method) (string, error) {
 	return c.delegate(method.Comments)
 }
