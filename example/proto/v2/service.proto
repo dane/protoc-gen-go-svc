@@ -6,7 +6,7 @@ import "google/protobuf/timestamp.proto";
 import "gen/svc/annotations.proto";
 
 option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v2;v2";
-option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v2;v2";
+option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service";
 
 service People {
   rpc Create(CreateRequest) returns (CreateResponse);

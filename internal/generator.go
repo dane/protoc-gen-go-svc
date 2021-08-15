@@ -62,6 +62,7 @@ func (g *Generator) Run(plugin *protogen.Plugin) error {
 	}
 	logger = log.New(dst, "", 0)
 
+	var serviceGoPackageNameBase string
 	var services []*generators.Service
 	var private *generators.Service
 	messages := make(map[protogen.GoImportPath]map[string]*protogen.Message)
@@ -73,13 +74,31 @@ func (g *Generator) Run(plugin *protogen.Plugin) error {
 		}
 
 		for _, service := range file.Services {
-			svc := &generators.Service{
-				GoIdent:       file.GoDescriptorIdent,
-				GoPackageName: file.GoPackageName,
-				GoName:        service.GoName,
-				Service:       service,
+			serviceGoPackage, err := fileGoPackage(file)
+			if err != nil {
+				return err
 			}
-			svc.GoServiceImportPath = serviceImportPath(svc)
+
+			if serviceGoPackageNameBase == "" {
+				serviceGoPackageNameBase = serviceGoPackage
+			}
+
+			if serviceGoPackageNameBase != serviceGoPackage {
+				return fmt.Errorf("invalid option (gen.svc.go_package). values %q and %q do not match",
+					serviceGoPackageNameBase,
+					serviceGoPackage,
+				)
+			}
+
+			importPath := fmt.Sprintf("%s/%s", serviceGoPackage, file.GoPackageName)
+
+			svc := &generators.Service{
+				GoIdent:             file.GoDescriptorIdent,
+				GoPackageName:       file.GoPackageName,
+				GoName:              service.GoName,
+				Service:             service,
+				GoServiceImportPath: protogen.GoImportPath(importPath),
+			}
 
 			if PrivatePackage == svc.GoPackageName {
 				private = svc
@@ -201,7 +220,7 @@ func (g *Generator) Run(plugin *protogen.Plugin) error {
 	}
 
 	fileName := filepath.Join(ServiceDir, ServiceFileName)
-	file := plugin.NewGeneratedFile(fileName, "")
+	file := plugin.NewGeneratedFile(fileName, protogen.GoImportPath(serviceGoPackageNameBase))
 	if err := generateServiceRegister(file, services); err != nil {
 		return err
 	}
