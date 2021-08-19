@@ -20,4 +20,10 @@ var (
 
 	//go:embed templates/partial_service_mutators.go.tmpl
 	templateServiceMutators string
+
+	//go:embed templates/partial_service_validator_interface.go.tmpl
+	templateServiceValidatorInterface string
+
+	//go:embed templates/partial_service_validator_method.go.tmpl
+	templateServiceValidatorMethod string
 )

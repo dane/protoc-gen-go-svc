@@ -1,0 +1,18 @@
+func(v validator) Validate{{ .MessageName }}(in *{{ .PackageName }}.{{ .MessageName }}) error {
+	if in == nil {
+		return nil
+	}
+	err := validation.ValidateStruct(in,
+		{{ range .Fields -}}
+		validation.Field(&in.{{ .FieldName }},
+			{{ range .Rules -}}
+			{{ . }},
+			{{ end -}}
+		),
+		{{ end -}}
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
