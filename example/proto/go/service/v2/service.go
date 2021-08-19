@@ -109,10 +109,6 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 	return out, privateOut, nil
 }
 
-const ValidatorName = "example.v2.People.Validator"
-
-func NewValidator() Validator { return validator{} }
-
 type Validator interface {
 	Name() string
 	ValidateCoding(*publicpb.Coding) error
@@ -128,6 +124,11 @@ type Validator interface {
 	ValidateReading(*publicpb.Reading) error
 	ValidateUpdateRequest(*publicpb.UpdateRequest) error
 }
+
+const ValidatorName = "example.v2.People.Validator"
+
+func NewValidator() Validator { return validator{} }
+
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
@@ -144,6 +145,9 @@ func (v validator) ValidateCoding(in *publicpb.Coding) error {
 	return nil
 }
 func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -178,6 +182,9 @@ func (v validator) ValidateCycling(in *publicpb.Cycling) error {
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id),
 	)
@@ -187,6 +194,9 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	return nil
 }
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -297,6 +307,9 @@ func (v validator) ValidateReading(in *publicpb.Reading) error {
 	return nil
 }
 func (v validator) ValidateUpdateRequest(in *publicpb.UpdateRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
