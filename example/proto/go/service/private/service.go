@@ -55,10 +55,6 @@ func (s *Service) Update(ctx context.Context, in *privatepb.UpdateRequest) (*pri
 	return s.Impl.Update(ctx, in)
 }
 
-const ValidatorName = "example.private.People.Validator"
-
-func NewValidator() Validator { return validator{} }
-
 type Validator interface {
 	Name() string
 	ValidateCoding(*privatepb.Coding) error
@@ -75,6 +71,11 @@ type Validator interface {
 	ValidateReading(*privatepb.Reading) error
 	ValidateUpdateRequest(*privatepb.UpdateRequest) error
 }
+
+const ValidatorName = "example.private.People.Validator"
+
+func NewValidator() Validator { return validator{} }
+
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
@@ -91,6 +92,9 @@ func (v validator) ValidateCoding(in *privatepb.Coding) error {
 	return nil
 }
 func (v validator) ValidateCreateRequest(in *privatepb.CreateRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -137,6 +141,9 @@ func (v validator) ValidateCycling(in *privatepb.Cycling) error {
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id),
 	)
@@ -146,6 +153,9 @@ func (v validator) ValidateDeleteRequest(in *privatepb.DeleteRequest) error {
 	return nil
 }
 func (v validator) ValidateFetchRequest(in *privatepb.FetchRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id),
 	)
@@ -220,6 +230,9 @@ func (v validator) ValidateHobby_Cycling(in *privatepb.Hobby_Cycling) error {
 	return nil
 }
 func (v validator) ValidateListRequest(in *privatepb.ListRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in)
 	if err != nil {
 		return err
@@ -273,6 +286,9 @@ func (v validator) ValidateReading(in *privatepb.Reading) error {
 	return nil
 }
 func (v validator) ValidateUpdateRequest(in *privatepb.UpdateRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,

@@ -31,10 +31,6 @@ type Service struct {
 	publicpb.PeopleServer
 }
 
-const ValidatorName = "example.v1.People.Validator"
-
-func NewValidator() Validator { return validator{} }
-
 type Validator interface {
 	Name() string
 	ValidateBiking(*publicpb.Biking) error
@@ -50,6 +46,11 @@ type Validator interface {
 	ValidatePerson(*publicpb.Person) error
 	ValidateReading(*publicpb.Reading) error
 }
+
+const ValidatorName = "example.v1.People.Validator"
+
+func NewValidator() Validator { return validator{} }
+
 type validator struct{}
 
 func (v validator) Name() string { return ValidatorName }
@@ -78,6 +79,9 @@ func (v validator) ValidateCoding(in *publicpb.Coding) error {
 	return nil
 }
 func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -103,6 +107,9 @@ func (v validator) ValidateCreateRequest(in *publicpb.CreateRequest) error {
 	return nil
 }
 func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -115,6 +122,9 @@ func (v validator) ValidateDeleteRequest(in *publicpb.DeleteRequest) error {
 	return nil
 }
 func (v validator) ValidateGetRequest(in *publicpb.GetRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Id,
 			validation.Required,
@@ -192,6 +202,9 @@ func (v validator) ValidateHobby_Biking(in *publicpb.Hobby_Biking) error {
 	return nil
 }
 func (v validator) ValidateListRequest(in *publicpb.ListRequest) error {
+	if in == nil {
+		return nil
+	}
 	err := validation.ValidateStruct(in)
 	if err != nil {
 		return err

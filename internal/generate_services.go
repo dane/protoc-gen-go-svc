@@ -1106,44 +1106,37 @@ func generateServiceMethodToNextImpl(file *protogen.GeneratedFile, method *proto
 }
 
 func generateServiceValidators(file *protogen.GeneratedFile, packageName string, service *generators.Service) error {
-	file.P(`const ValidatorName = "`, service.Desc.FullName(), `.Validator"`)
-	file.P("func NewValidator() Validator { return validator{} }")
+	serviceFullName := service.Desc.FullName()
+	var messageNames []string
 
-	file.P("type Validator interface {")
-	file.P("Name() string")
 	for _, message := range service.Messages {
 		if _, ok := outputs[message]; ok {
 			continue
 		}
-		messageName := message.GoIdent.GoName
-		logger.Printf("package=%s at=generate-validator-interface message=%s", service.GoPackageName, messageName)
-		file.P("Validate", messageName, "(*", packageName, ".", messageName, ") error")
 
+		messageNames = append(messageNames, message.GoIdent.GoName)
 		for _, oneof := range message.Oneofs {
 			for _, field := range oneof.Fields {
-				fieldName := field.GoIdent.GoName
-				logger.Printf("package=%s at=generate-validator-interface oneof=%s", service.GoPackageName, fieldName)
-				file.P("Validate", fieldName, "(*", packageName, ".", fieldName, ") error")
+				messageNames = append(messageNames, field.GoIdent.GoName)
 			}
 		}
 	}
-	file.P("}")
 
-	file.P("type validator struct {}")
-	file.P("func (v validator) Name() string { return ValidatorName }")
+	g := generators.NewServiceValidatorInterface(serviceFullName, packageName, messageNames)
+	if err := g.Generate(file); err != nil {
+		return err
+	}
+
 	for _, message := range service.Messages {
 		if _, ok := outputs[message]; ok {
 			continue
 		}
 
+		var fields []generators.ValidatorField
 		messageName := message.GoIdent.GoName
-		logger.Printf("package=%s at=generate-validator-function message=%s", service.GoPackageName, messageName)
-		file.P("func(v validator) Validate", messageName, "(in *", packageName, ".", messageName, ") error {")
-		if _, ok := inputs[message]; !ok {
-			file.P("if in == nil { return nil }")
-		}
 
-		file.P("err := validation.ValidateStruct(in,")
+		logger.Printf("package=%s at=generate-validator-function message=%s", service.GoPackageName, messageName)
+
 		for _, field := range message.Fields {
 			if field.Oneof != nil {
 				continue
@@ -1153,11 +1146,11 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 				continue
 			}
 
+			var rules []string
 			fieldName := field.GoName
-			file.P("validation.Field(&in.", fieldName, ",")
 
 			if requiredField(field) {
-				file.P("validation.Required,")
+				rules = append(rules, "validation.Required")
 			}
 
 			isName, err := is(field)
@@ -1166,11 +1159,11 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 			}
 			switch strings.ToLower(isName) {
 			case "uuid":
-				file.P("is.UUID,")
+				rules = append(rules, "is.UUID")
 			case "url":
-				file.P("is.URL,")
+				rules = append(rules, "is.URL")
 			case "email":
-				file.P("is.Email,")
+				rules = append(rules, "is.Email")
 			}
 
 			inValues, err := in(packageName, field)
@@ -1179,7 +1172,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 			}
 
 			if inValues != nil {
-				file.P("validation.In(", strings.Join(inValues, ","), "),")
+				rules = append(rules, fmt.Sprintf("validation.In(%s)", strings.Join(inValues, ",")))
 			}
 
 			minValue, minSet, err := min(field)
@@ -1203,14 +1196,14 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 
 				switch field.Desc.Kind() {
 				case protoreflect.StringKind:
-					file.P("validation.Length(", minValue, ",", maxValue, "),")
+					rules = append(rules, fmt.Sprintf("validation.Length(%s, %s)", minValue, maxValue))
 				case protoreflect.FloatKind, protoreflect.Uint64Kind, protoreflect.Int64Kind:
 					if minSet {
-						file.P("validation.Min(", minValue, "),")
+						rules = append(rules, fmt.Sprintf("validation.Min(%s)", minValue))
 					}
 
 					if maxSet {
-						file.P("validation.Max(", maxValue, "),")
+						rules = append(rules, fmt.Sprintf("validation.Max(%s)", maxValue))
 					}
 				default:
 					return fmt.Errorf(`invalid field type for "min/max" validate annotations`)
@@ -1219,10 +1212,16 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 
 			if field.Message != nil {
 				messageName := field.Message.GoIdent.GoName
-				file.P("validation.By(func(interface{}) error { return v.Validate", messageName, "(in.", fieldName, ") }),")
+				rules = append(
+					rules,
+					fmt.Sprintf("validation.By(func(interface{}) error { return v.Validate%s(in.%s) })", messageName, fieldName),
+				)
 			}
 
-			file.P("),")
+			fields = append(fields, generators.ValidatorField{
+				FieldName: fieldName,
+				Rules:     rules,
+			})
 		}
 
 		for _, oneof := range message.Oneofs {
@@ -1231,39 +1230,47 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 				messageName := field.GoName
 				fieldName := field.GoIdent.GoName
 				ref := fmt.Sprintf("*%s.%s", packageName, fieldName)
-				file.P("validation.Field(&in.", oneofName, ",")
-				file.P("validation.When(in.Get", messageName, "() != nil, validation.By(func(val interface{}) error { return v.Validate", fieldName, "(val.(", ref, ")) })),")
-				file.P("),")
+
+				rule := fmt.Sprintf("validation.When(in.Get%s() != nil, validation.By(func(val interface{}) error { return v.Validate%s(val.(%s)) }))", messageName, fieldName, ref)
+				fields = append(fields, generators.ValidatorField{
+					FieldName: oneofName,
+					Rules:     []string{rule},
+				})
 			}
 		}
-		file.P(")")
-		file.P("if err != nil { return err }")
-		file.P("return nil")
-		file.P("}")
+
+		g := generators.NewServiceValidatorMethod(packageName, messageName, fields)
+		if err := g.Generate(file); err != nil {
+			return err
+		}
 
 		for _, oneof := range message.Oneofs {
 			for _, field := range oneof.Fields {
 				typeName := field.GoIdent.GoName
 				fieldName := field.GoName
+				var rules []string
+
 				logger.Printf("package=%s at=generate-validator-function oneof=%s", service.GoPackageName, typeName)
-				file.P("func(v validator) Validate", typeName, "(in *", packageName, ".", typeName, ") error {")
-				file.P("if in == nil { return nil }")
-				file.P("err := validation.ValidateStruct(in,")
 				messageName := field.Message.GoIdent.GoName
-				file.P("validation.Field(&in.", messageName, ",")
 
 				if requiredOneof(oneof) {
-					file.P("validation.Required,")
+					rules = append(rules, "validation.Required")
 				}
 
-				file.P("validation.By(func(interface{}) error { return v.Validate", messageName, "(in.", fieldName, ") }),")
+				rules = append(
+					rules,
+					fmt.Sprintf("validation.By(func(interface{}) error { return v.Validate%s(in.%s) })", messageName, fieldName),
+				)
 
-				file.P("),")
-				file.P(")")
-				file.P("if err != nil { return err }")
-				file.P("return nil")
-				file.P("}")
-
+				g := generators.NewServiceValidatorMethod(packageName, typeName, []generators.ValidatorField{
+					{
+						FieldName: messageName,
+						Rules:     rules,
+					},
+				})
+				if err := g.Generate(file); err != nil {
+					return err
+				}
 			}
 		}
 	}

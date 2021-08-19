@@ -1,0 +1,12 @@
+{{ $packageName := .PackageName -}}
+type Validator interface {
+	Name() string
+	{{ range $messageName := .MessageNames -}}
+	Validate{{ $messageName }}(*{{ $packageName }}.{{ $messageName }}) error
+	{{ end -}}
+}
+
+const ValidatorName = "{{ .ServiceFullName }}.Validator"
+func NewValidator() Validator { return validator{} }
+type validator struct {}
+func (v validator) Name() string { return ValidatorName }
