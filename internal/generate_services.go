@@ -46,8 +46,25 @@ func generatePrivateService(file *protogen.GeneratedFile, service *generators.Se
 		return err
 	}
 
-	if err := generateMutators(file, service); err != nil {
-		return err
+	for _, method := range service.Methods {
+		messageName := method.Input.GoIdent.GoName
+
+		var fields []generators.MutatorField
+		for _, field := range method.Input.Fields {
+			fieldType, err := findFieldType("privatepb", field)
+			if err != nil {
+				return fmt.Errorf("failed to generate mutator for %s: %w", messageName, err)
+			}
+
+			fields = append(fields, generators.MutatorField{
+				FieldName: field.GoName,
+				FieldType: fieldType,
+			})
+		}
+
+		if err := generators.NewServiceMutators(messageName, fields).Generate(file); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -995,14 +1012,6 @@ func generateConverterToNextIface(file *protogen.GeneratedFile, v interface{}, c
 	return nil
 }
 
-func generateImportUsage(file *protogen.GeneratedFile, refs ...string) {
-	refs = append([]string{"is.Int", "validation.Validate", "fmt.Errorf"}, refs...)
-
-	for _, ref := range refs {
-		file.P("var _ =", ref)
-	}
-}
-
 func generateServiceMethods(file *protogen.GeneratedFile, service *generators.Service, packageName string, toPrivate bool) error {
 	for _, method := range service.Methods {
 		g := generators.NewServiceMethod(
@@ -1142,7 +1151,7 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 				continue
 			}
 
-			if field.Message != nil && !isServiceMessage(service, field.Message) {
+			if field.Message != nil && service.GoImportPath != field.Message.GoIdent.GoImportPath {
 				continue
 			}
 
@@ -1278,31 +1287,6 @@ func generateServiceValidators(file *protogen.GeneratedFile, packageName string,
 	return nil
 }
 
-func generateMutators(file *protogen.GeneratedFile, service *generators.Service) error {
-	for _, method := range service.Methods {
-		messageName := method.Input.GoIdent.GoName
-
-		var fields []generators.MutatorField
-		for _, field := range method.Input.Fields {
-			fieldType, err := findFieldType("privatepb", field)
-			if err != nil {
-				return fmt.Errorf("failed to generate mutator for %s: %w", messageName, err)
-			}
-
-			fields = append(fields, generators.MutatorField{
-				FieldName: field.GoName,
-				FieldType: fieldType,
-			})
-		}
-
-		if err := generators.NewServiceMutators(messageName, fields).Generate(file); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func fieldMatch(a, b *protogen.Field) bool {
 	if a.Desc.Kind() != b.Desc.Kind() {
 		return false
@@ -1317,8 +1301,4 @@ func fieldMatch(a, b *protogen.Field) bool {
 	}
 
 	return true
-}
-
-func isServiceMessage(service *generators.Service, message *protogen.Message) bool {
-	return service.GoImportPath == message.GoIdent.GoImportPath
 }
