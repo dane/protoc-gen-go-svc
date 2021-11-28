@@ -15,16 +15,17 @@ type Message struct {
 	IsDeprecated bool
 	IsExternal   bool
 	IsOneOf      bool
-	//IsUsed       bool
-	Name        string
-	ImportPath  string
-	PackageName string
-	Private     *Message
-	Next        *Message
-	Fields      []*Field
-	FieldByName map[string]*Field
+	Name         string
+	ImportPath   string
+	PackageName  string
+	Private      *Message
+	Next         *Message
+	Fields       []*Field
+	FieldByName  map[string]*Field
 }
 
+// NewMessage creates a `Message`. An error will be returned if the message
+// cannot be created for any reason.
 func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 	msg := &Message{
 		IsPrivate:    svc.IsPrivate,
@@ -36,6 +37,7 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 		FieldByName:  make(map[string]*Field),
 	}
 
+	// Private messages are the last in the service chain.
 	if msg.IsPrivate {
 		return msg, nil
 	}
@@ -43,6 +45,8 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 	messageName := options.MessageName(message)
 	var ok bool
 
+	// Messages of the latest service or deprecated messages read/write directly
+	// to the private service.
 	if msg.IsLatest || msg.IsDeprecated {
 		msg.Private, ok = svc.Private.MessageByName[buildMesageKey(svc.Private, messageName)]
 		if !ok {
@@ -52,6 +56,7 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 		return msg, nil
 	}
 
+	// All other messages will chain to a message in the next service version.
 	msg.Next, ok = svc.Next.MessageByName[buildMesageKey(svc.Next, messageName)]
 	if !ok {
 		return nil, NewErrMessageNotFound(messageName, svc.Next)
@@ -62,6 +67,9 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 	return msg, nil
 }
 
+// NewExternalMessage creates a `Message` for protobuf messages that are
+// external to the public and private services. These are placeholder structures
+// to make building validators and converters easier.
 func NewExternalMessage(message *protogen.Message) *Message {
 	msg := &Message{
 		IsExternal: true,
