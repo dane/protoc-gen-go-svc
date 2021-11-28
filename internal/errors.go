@@ -4,7 +4,12 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+func NewErrPrivatePackageNotFound(name protoreflect.FullName) error {
+	return fmt.Errorf("private package %s was not found", name)
+}
 
 func NewErrCreateService(svc *Service, err error) error {
 	return fmt.Errorf("failed to create service %s of package %s: %w", svc.Name, svc.ProtoPackageName, err)

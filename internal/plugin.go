@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -95,7 +97,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 	// Ensure a private service is present.
 	privatePackage, ok := packages[privatePackageName]
 	if !ok {
-		return fmt.Errorf("private package %s was not found", privatePackageName)
+		return NewErrPrivatePackageNotFound(privatePackageName)
 	}
 
 	// Convert map of packages to sorted slice. Exclude the private package from
@@ -135,7 +137,12 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 		}
 
 		if p.Verbose {
-			printSvcYAML(svc)
+			fmt.Fprintf(os.Stderr, ">> %s\n", svc.ProtoPackageName)
+			enc := json.NewEncoder(os.Stderr)
+			enc.SetIndent("", "    ")
+			if err := enc.Encode(svc); err != nil {
+				return err
+			}
 		}
 
 		svcChain = append(svcChain, svc)
