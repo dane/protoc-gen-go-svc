@@ -9,10 +9,11 @@ import (
 )
 
 func main() {
-	var gen internal.Generator
+	var gen internal.Plugin
 	var flags flag.FlagSet
 
 	flags.BoolVar(&gen.Verbose, "verbose", false, "enable verbose logging")
+	flags.StringVar(&gen.PrivatePackageName, "private_package", "private", "name of private service package")
 
 	opt := protogen.Options{ParamFunc: flags.Set}
 	opt.Run(gen.Run)

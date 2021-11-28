@@ -1,0 +1,74 @@
+{{ define "validators" -}}
+func NewValidator() Validator {
+	return validator{}
+}
+
+type Validator interface {
+	Name() string
+	{{ range . -}}
+		{{ $packageName := "publicpb" -}}
+		{{ if .IsPrivate -}}
+			{{ $packageName = "privatepb" -}}
+		{{ end -}}
+
+		{{ $prefix := "" -}}
+		{{ if .IsExternal -}}
+			{{ $prefix = "External" -}}
+			{{ $packageName = .PackageName -}}
+		{{ end -}}
+		Validate{{ $prefix }}{{ .Name }}(*{{ $packageName }}.{{ .Name }}) error
+		By{{ $prefix }}{{ .Name }}(interface{}) error
+	{{ end -}}
+}
+
+type validator struct{}
+
+func (v validator) Name() string {
+	return ValidatorName
+}
+
+{{ range . -}}
+	{{ $packageName := "publicpb" -}}
+	{{ if .IsPrivate -}}
+		{{ $packageName = "privatepb" -}}
+	{{ end -}}
+
+	{{ $prefix := "" -}}
+	{{ if .IsExternal -}}
+		{{ $prefix = "External" -}}
+		{{ $packageName = .PackageName -}}
+	{{ end -}}
+	func(v validator) Validate{{ $prefix }}{{ .Name }}(in *{{ $packageName }}.{{ .Name }}) error {
+		{{ if .IsExternal -}}
+			return nil
+		{{ else -}}
+		return validation.ValidateStruct(in,
+			{{ range .Fields -}}
+			validation.Field(&in.{{ .Name }},
+				{{ if .IsRepeated -}}
+					validation.Each({{ range .Rules }}{{.}},{{ end }}),
+				{{ else -}}
+					{{ range .Rules -}}
+						{{.}},
+					{{ end -}}
+				{{ end -}}
+			),
+			{{ end -}}
+		)
+		{{ end -}}
+	}
+
+	func (v validator) By{{ $prefix }}{{ .Name }}(value interface{}) error {
+		var in *{{ $packageName }}.{{ .Name }}
+		if v, ok := value.(*{{ $packageName }}.{{ .Name }}); ok {
+			in = v
+		} else {
+			v := value.({{ $packageName }}.{{ .Name }})
+			in = &v
+		}
+
+		return v.Validate{{ $prefix }}{{ .Name }}(in)
+	}
+{{ end -}}
+{{ end -}}{{/* end validators */}}
+

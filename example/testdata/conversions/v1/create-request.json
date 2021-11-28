@@ -1,0 +1,11 @@
+{
+    "id": "f95616f1-23e3-4694-8658-8082b0a18267",
+    "first_name": "Dane",
+    "last_name": "Harrigan",
+    "employment": 1,
+    "hobby": {
+        "biking": {
+            "style": "road"
+        }
+    }
+}

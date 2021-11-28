@@ -57,6 +57,10 @@ message MessageAnnotation {
   // overriding which message is targated when converted messages between
   // service versions.
   Delegate delegate = 1;
+
+  // deprecated indicates a message is not present in the next service version.
+  // Deprecated messages must be present in the private service.
+  bool deprecated = 2;
 }
 
 message FieldAnnotation {
@@ -73,11 +77,6 @@ message FieldAnnotation {
   // validate is a map of validation criteria for the field. See documentation
   // of `Validate`.
   Validate validate = 3;
-
-  // default is a map of builtin types. When messages are converted from an
-  // older service version to the next, new fields may be introduced. The
-  // `default` value set will populate the newly introduced field.
-  Default default = 4;
 
   // deprecated indicates a field is not present in the message of the next
   // service version. Deprecated fields must be present on the message of the
@@ -185,23 +184,6 @@ message Validate {
 message OneofValidate {
   // required ensures a field value is not nil.
   bool required = 1;
-}
-
-message Default {
-  // bool contains the default value of a boolean field.
-  bool bool = 1;
-
-  // int64 contains the default value of a int64 field.
-  int64 int64 = 2;
-
-  // uint64 contains the default value of a uint64 field.
-  uint64 uint64 = 3;
-
-  // double contains the default value of a double field.
-  double double = 4;
-
-  // string contains the default value of a string field.
-  string string = 5;
 }
 
 message Number {

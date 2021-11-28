@@ -3,7 +3,7 @@ syntax = "proto3";
 package example.private;
 
 option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/private;private";
-option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service";
+option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service;service";
 
 import "google/protobuf/timestamp.proto";
 import "gen/svc/annotations.proto";
@@ -14,6 +14,7 @@ service People {
   rpc Delete(DeleteRequest) returns (DeleteResponse);
   rpc List(ListRequest) returns (ListResponse);
   rpc Update(UpdateRequest) returns (UpdateResponse);
+  rpc Batch(BatchRequest) returns (BatchResponse);
 }
 
 message Person {
@@ -102,4 +103,12 @@ message UpdateRequest {
 
 message UpdateResponse {
   Person person = 1;
+}
+
+message BatchRequest {
+  repeated CreateRequest creates = 1;
+}
+
+message BatchResponse {
+  repeated Person people = 1;
 }

@@ -6,7 +6,7 @@ import "google/protobuf/timestamp.proto";
 import "gen/svc/annotations.proto";
 
 option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v2;v2";
-option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service";
+option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service;service";
 
 service People {
   rpc Create(CreateRequest) returns (CreateResponse);
@@ -15,6 +15,7 @@ service People {
   };
   rpc Delete(DeleteRequest) returns (DeleteResponse);
   rpc Update(UpdateRequest) returns (UpdateResponse);
+  rpc Batch(BatchRequest) returns (BatchResponse);
 }
 
 message Person {
@@ -58,7 +59,7 @@ message Cycling {
 message CreateRequest {
   string id = 1        [(gen.svc.field).validate = { required: true, is: UUID }];
   string full_name = 2 [(gen.svc.field).validate = { required: true, min: { int64: 4 } }];
-  int64 age = 3        [(gen.svc.field).default = { int64: 0 }];
+  int64 age = 3;
   Person.Employment employment = 4;
   Hobby hobby = 5      [(gen.svc.field).validate = { required: true }];
 }
@@ -90,4 +91,12 @@ message UpdateRequest {
 
 message UpdateResponse {
   Person person = 1;
+}
+
+message BatchRequest {
+  repeated CreateRequest creates = 1;
+}
+
+message BatchResponse {
+  repeated Person people = 1;
 }

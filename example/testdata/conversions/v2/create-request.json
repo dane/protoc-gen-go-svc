@@ -1,0 +1,11 @@
+{
+    "id": "f95616f1-23e3-4694-8658-8082b0a18267",
+    "full_name": "Dane Harrigan",
+    "age": 25,
+    "employment": 1,
+    "hobby": {
+        "cycling": {
+            "style": "road"
+        }
+    }
+}

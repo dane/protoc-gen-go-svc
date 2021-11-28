@@ -1,0 +1,16 @@
+{{ define "mutators" -}}
+{{ range $method := . -}}
+	type {{ .Input.Name }}Mutator func(*privatepb.{{ .Input.Name }})
+	{{ range .Input.Fields -}}
+		{{ $slicePrefix := "" -}}
+		{{ if .IsRepeated -}}
+			{{ $slicePrefix = "[]" -}}
+		{{ end -}}
+		func Set{{ $method.Input.Name }}_{{ .Name }}(value {{ $slicePrefix }}{{ type_of . }}) {{ $method.Input.Name }}Mutator {
+			return func(in *privatepb.{{ $method.Input.Name }}) {
+				in.{{ .Name }} = value
+			}
+		}
+	{{ end -}}
+{{ end -}}
+{{ end -}}{{/* end mutators template */}}
