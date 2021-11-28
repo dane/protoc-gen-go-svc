@@ -1,0 +1,146 @@
+package testing
+
+import (
+	"testing"
+	"context"
+	"io/ioutil"
+	"net"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/grpc"
+	{{ range .Messages -}}
+		{{ if .IsExternal -}}
+			{{ .PackageName }} "{{ .ImportPath }}"
+		{{ end -}}
+	{{ end }}
+
+	service "{{ .ServiceImportPath }}"
+	privatepb "{{ .Private.ImportPath }}"
+	publicpb "{{ .ImportPath }}"
+)
+
+type TestFunc func(*testing.T, Params, []service.Option)
+
+type Params struct {
+	PublicInput string
+	PublicOutput string
+	PrivateInput string
+	PrivateOutput string
+}
+
+{{ $publicPackageName := .PackageName -}}
+{{ $privatePackageName := .Private.PackageName -}}
+{{ $publicServiceName := .Name -}}
+{{ range .Methods -}}
+func New{{ .Name }}ConversionTest(t *testing.T, params Params, options []service.Option) {
+	t.Run(`verify conversions between "{{ $publicPackageName }}" and "{{ $privatePackageName }}"`, func(t *testing.T) {
+		var (
+			publicIn   publicpb.{{ .Input.Name }}
+			publicOut  publicpb.{{ .Output.Name }}
+			privateIn  privatepb.{{ .Input.Private.Name }}
+			privateOut privatepb.{{ .Output.Private.Name }}
+		)
+
+		files := map[string]protoreflect.ProtoMessage{
+			params.PublicInput:   &publicIn,
+			params.PublicOutput:  &publicOut,
+			params.PrivateInput:  &privateIn,
+			params.PrivateOutput: &privateOut,
+		}
+
+		for fileName, dst := range files {
+			b, err := ioutil.ReadFile(fileName)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := protojson.Unmarshal(b, dst); err != nil {
+				t.Fatalf("%s: %s", fileName, err)
+			}
+		}
+
+		ctx := context.Background()
+		s := &server{
+			{{ .Input.Private.Name }}:  &privateIn,
+			{{ .Output.Private.Name }}: &privateOut,
+		}
+		addr, cleanup := startServer(t, s, options)
+		defer cleanup()
+
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		client := publicpb.New{{ $publicServiceName }}Client(conn)
+		out, err := client.{{ .Name }}(ctx, &publicIn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !cmp.Equal(out, &publicOut, ignore()...) {
+			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
+		}
+
+		if s.notEqual {
+			t.Fatal(s.diff)
+		}
+	})
+}
+{{ end -}}
+
+func startServer(t *testing.T, ts privatepb.{{ .Name }}Server, options []service.Option) (string, func()) {
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := grpc.NewServer()
+	service.RegisterServer(srv, ts, options...)
+
+	go func(t *testing.T, srv *grpc.Server, ln net.Listener) {
+		if err := srv.Serve(ln); err != nil {
+			t.Fatal(err)
+		}
+	}(t, srv, ln)
+
+	return ln.Addr().String(), srv.Stop
+}
+
+type server struct {
+	privatepb.{{ .Private.Name }}Server
+	notEqual bool
+	diff string
+	{{ range .Methods -}}
+		{{ .Input.Private.Name }} *privatepb.{{ .Input.Private.Name }}
+		{{ .Output.Private.Name }} *privatepb.{{ .Output.Private.Name }}
+	{{ end -}}
+}
+
+{{ range .Methods -}}
+func (s *server) {{ .Private.Name }}(_ context.Context, in *privatepb.{{ .Input.Private.Name }}) (*privatepb.{{ .Output.Private.Name }}, error) {
+	if !cmp.Equal(in, s.{{ .Input.Private.Name }}, ignore()...) {
+		s.notEqual = true
+		s.diff = cmp.Diff(in, s.{{ .Input.Private.Name }}, ignore()...)
+	}
+
+	return s.{{ .Output.Private.Name }}, nil
+}
+{{ end -}}
+
+func ignore() []cmp.Option {
+	return []cmp.Option{
+	{{ range .Messages -}}
+		{{ if .IsExternal -}}
+			cmpopts.IgnoreUnexported({{ .PackageName }}.{{ .Name }}{}),
+		{{ else -}}
+			cmpopts.IgnoreUnexported(publicpb.{{ .Name }}{}),
+			cmpopts.IgnoreUnexported(privatepb.{{ .Private.Name }}{}),
+		{{ end -}}
+	{{ end -}}
+	}
+}
+

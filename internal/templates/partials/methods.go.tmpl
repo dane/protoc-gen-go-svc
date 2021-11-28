@@ -1,0 +1,67 @@
+{{ define "methods" -}}
+{{ range $method := . -}}
+	{{ $packageName := "publicpb" -}}
+	{{ if .IsPrivate -}}
+		{{ $packageName = "privatepb" -}}
+	{{ end -}}
+	func (s *Service) {{ .Name }}(ctx context.Context, in *{{ $packageName }}.{{ .Input.Name }}) (*{{ $packageName }}.{{ .Output.Name }}, error) {
+		if err := s.Validate{{ .Input.Name }}(in); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument,"%s",  err)
+		}
+
+		{{ if .IsPrivate -}}
+			out, err := s.Impl.{{ .Name }}(ctx, in)
+			return out, err
+		{{ else -}}
+			out, _, err := s.{{ .Name }}Impl(ctx, in)
+			return out, err
+		{{ end -}}
+	}
+
+	{{ if not .IsPrivate -}}
+		func (s *Service) {{ .Name }}Impl(ctx context.Context, in *publicpb.{{ .Input.Name }}, mutators ...private.{{ .Input.Private.Name }}Mutator) (*publicpb.{{ .Output.Name }}, *privatepb.{{ .Output.Private.Name }}, error) {
+			// Set mutators for all deprecated fields
+			{{ range .Input.Fields -}}
+				{{ if .IsDeprecated -}}
+					mutators = append(mutators, private.Set{{ $method.Input.Name }}_{{ .Private.Name }}(in.{{ .Name }}))
+				{{ end -}}
+			{{ end -}}
+
+			{{ if or .IsLatest .IsDeprecated -}}
+				inPriv := s.ToPrivate{{ .Input.Private.Name }}(in)
+				for _, mutator := range mutators {
+					mutator(inPriv)
+				}
+
+				outPriv, err := s.Private.{{ .Private.Name }}(ctx, inPriv)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				{{ $deprecated := "" -}}
+				{{ if .IsDeprecated -}}
+					{{ $deprecated = "Deprecated" }}
+				{{ end -}}
+
+				out, err := s.To{{ $deprecated }}Public{{ .Output.Name }}(outPriv)
+				if err != nil {
+					return nil, nil, err
+				}
+			{{ else if not .IsPrivate -}}
+				inNext := s.ToNext{{ .Input.Next.Name }}(in)
+				outNext, outPriv, err := s.Next.{{ .Next.Name }}Impl(ctx, inNext, mutators...)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				out, err := s.ToPublic{{ .Output.Name }}(outNext, outPriv)
+				if err != nil {
+					return nil, nil, err
+				}
+			{{ end -}}
+
+			return out, outPriv, nil
+		}
+	{{ end -}}
+{{ end -}}
+{{ end -}}{{/* end methods template */}}
