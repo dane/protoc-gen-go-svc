@@ -67,13 +67,13 @@ package v1
 import (
 	"fmt"
 
-	public "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v1"
+	publicv1 "github.com/dane/protoc-gen-go-svc/example/proto/go/service/v1"
 	publicpb "github.com/dane/protoc-gen-go-svc/example/proto/go/v1"
 	nextpb "github.com/dane/protoc-gen-go-svc/example/proto/go/v2"
 )
 
 type Converter struct {
-	public.Converter
+	publicv1.Converter
 }
 
 func (c Converter) ToNextCreateRequest(req *publicpb.CreateRequest) *nextpb.CreateRequest {
