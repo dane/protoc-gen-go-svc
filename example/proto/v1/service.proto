@@ -3,7 +3,7 @@ syntax = "proto3";
 package example.v1;
 
 option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v1;v1";
-option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service";
+option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service;service";
 
 import "google/protobuf/timestamp.proto";
 import "gen/svc/annotations.proto";
@@ -97,8 +97,11 @@ message DeleteRequest {
 
 message DeleteResponse {}
 
-message ListRequest {}
+message ListRequest {
+  option (gen.svc.message).deprecated = true;
+}
 
 message ListResponse {
+  option (gen.svc.message).deprecated = true;
   repeated Person people = 1;
 }
