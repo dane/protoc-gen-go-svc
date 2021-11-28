@@ -29,6 +29,8 @@ type Field struct {
 	Rules           []string
 }
 
+// NewField creates a `Field`. An error will be returned if the field cannot be
+// created for any reason.
 func NewField(svc *Service, msg *Message, field *protogen.Field) (*Field, error) {
 	f := &Field{
 		IsPrivate:       msg.IsPrivate,

@@ -136,6 +136,9 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 			return err
 		}
 
+		// Output the service package name and the complete service in JSON
+		// format for debugging purposes. The each service will contain the
+		// subsequent services in the chain.
 		if p.Verbose {
 			fmt.Fprintf(os.Stderr, ">> %s\n", svc.ProtoPackageName)
 			enc := json.NewEncoder(os.Stderr)
@@ -168,6 +171,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 		}
 	}
 
+	// Write services register wrapper file.
 	importPath := protogen.GoImportPath(serviceImportPath)
 	fileName := path.Join(serviceImportPath, FileName)
 	file := plugin.NewGeneratedFile(fileName, importPath)

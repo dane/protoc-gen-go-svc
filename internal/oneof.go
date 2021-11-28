@@ -6,6 +6,8 @@ import (
 	"github.com/dane/protoc-gen-go-svc/internal/options"
 )
 
+// NewOneOf creates a `OneOf`. An error will be returned if the oneof
+// cannot be created for any reason.
 func NewOneOf(svc *Service, msg *Message, oneof *protogen.Oneof) (*Field, error) {
 	f := &Field{
 		IsPrivate:    msg.IsPrivate,

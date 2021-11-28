@@ -27,7 +27,8 @@ example: build
 		-I /usr/local/include \
 		--go_out=$(shell echo ${GOPATH})/src \
 		--go-grpc_out=$(shell echo ${GOPATH})/src \
-		--go-svc_out=private_package=example.private,verbose=false:$(shell echo ${GOPATH}/src) \
+		--go-svc_opt=private_package=example.private,verbose=false \
+		--go-svc_out=$(shell echo ${GOPATH}/src) \
 			$(PWD)/example/proto/v2/service.proto \
 			$(PWD)/example/proto/v1/service.proto \
 			$(PWD)/example/proto/private/service.proto
