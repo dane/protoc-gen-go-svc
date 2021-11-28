@@ -2,6 +2,7 @@ package private
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -32,6 +33,8 @@ func (s *Service) Create(ctx context.Context, req *privatepb.CreateRequest) (*pr
 		CreatedAt:  timestamppb.Now(),
 		UpdatedAt:  timestamppb.Now(),
 	}
+
+	log.Printf("at=Create id=%q full-name=%q", person.Id, person.FullName)
 
 	s.Store[person.Id] = person
 	return &privatepb.CreateResponse{Person: person}, nil
@@ -75,4 +78,16 @@ func (s *Service) List(ctx context.Context, req *privatepb.ListRequest) (*privat
 	}
 
 	return &privatepb.ListResponse{People: people}, nil
+}
+
+func (s *Service) Batch(ctx context.Context, req *privatepb.BatchRequest) (*privatepb.BatchResponse, error) {
+	var people []*privatepb.Person
+	for _, create := range req.Creates {
+		res, err := s.Create(ctx, create)
+		if err != nil {
+			return nil, err
+		}
+		people = append(people, res.Person)
+	}
+	return &privatepb.BatchResponse{People: people}, nil
 }
