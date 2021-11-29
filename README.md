@@ -1,5 +1,9 @@
 # protoc-gen-go-svc
 
+[![GoDoc](https://pkg.go.dev/badge/github.com/dane/protoc-gen-go-svc)][4]
+[![GoReportCard](https://img.shields.io/badge/go%20report-A-green.svg?style=flat)][5]
+
+
 A protoc plugin for generating versioned, forwards compatible gRPC services.
 
 ## Prerequisites
@@ -338,3 +342,5 @@ func main() {
 [1]: https://github.com/dane/protoc-gen-go-svc/blob/main/gen/svc/annotations.proto
 [2]: https://github.com/dane/protoc-gen-go-svc/blob/0fed0a2e9b40faf45abc889e1b1a074d89502043/gen/svc/annotations.proto#L150-L196
 [3]: https://github.com/dane/protoc-gen-go-svc/blob/main/example/proto
+[4]: https://pkg.go.dev/github.com/dane/protoc-gen-go-svc
+[5]: https://goreportcard.com/report/github.com/dane/protoc-gen-go-svc
