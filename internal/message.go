@@ -18,15 +18,26 @@ type Message struct {
 	Name         string
 	ImportPath   string
 	PackageName  string
+	FullName     string
 	Private      *Message
 	Next         *Message
+	Parent       *Message
 	Fields       []*Field
 	FieldByName  map[string]*Field
 }
 
 // NewMessage creates a `Message`. An error will be returned if the message
 // cannot be created for any reason.
-func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
+func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, error) {
+	var p *Message
+	var ok bool
+
+	if parent != nil {
+		if p, ok = svc.MessageByName[messageKey(parent)]; !ok {
+			return nil, NewErrMessageNotFound(messageKey(parent), svc)
+		}
+	}
+
 	msg := &Message{
 		IsPrivate:    svc.IsPrivate,
 		IsLatest:     svc.IsLatest,
@@ -35,6 +46,8 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 		ImportPath:   svc.ImportPath,
 		Name:         message.GoIdent.GoName,
 		FieldByName:  make(map[string]*Field),
+		Parent:       p,
+		FullName:     string(message.Desc.FullName()),
 	}
 
 	// Private messages are the last in the service chain.
@@ -43,12 +56,17 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 	}
 
 	messageName := options.MessageName(message)
-	var ok bool
 
 	// Messages of the latest service or deprecated messages read/write directly
 	// to the private service.
 	if msg.IsLatest || msg.IsDeprecated {
-		msg.Private, ok = svc.Private.MessageByName[buildMesageKey(svc.Private, messageName)]
+		if msg.Parent == nil {
+			messageName = buildMessageKey(svc.Private, messageName)
+		} else {
+			messageName = fmt.Sprintf("%s.%s", msg.Parent.Private.FullName, messageName)
+		}
+
+		msg.Private, ok = svc.Private.MessageByName[messageName]
 		if !ok {
 			return nil, NewErrMessageNotFound(messageName, svc.Private)
 		}
@@ -57,7 +75,12 @@ func NewMessage(svc *Service, message *protogen.Message) (*Message, error) {
 	}
 
 	// All other messages will chain to a message in the next service version.
-	msg.Next, ok = svc.Next.MessageByName[buildMesageKey(svc.Next, messageName)]
+	if msg.Parent == nil {
+		messageName = buildMessageKey(svc.Next, messageName)
+	} else {
+		messageName = fmt.Sprintf("%s.%s", msg.Parent.Next.FullName, messageName)
+	}
+	msg.Next, ok = svc.Next.MessageByName[messageName]
 	if !ok {
 		return nil, NewErrMessageNotFound(messageName, svc.Next)
 	}

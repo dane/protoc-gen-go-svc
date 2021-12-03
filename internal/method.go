@@ -27,8 +27,16 @@ func NewMethod(svc *Service, method *protogen.Method) (*Method, error) {
 		Name:         method.GoName,
 	}
 
-	m.Input = svc.MessageByName[messageKey(method.Input)]
-	m.Output = svc.MessageByName[messageKey(method.Output)]
+	var ok bool
+	m.Input, ok = svc.MessageByName[messageKey(method.Input)]
+	if !ok {
+		return nil, NewErrMessageNotFound(messageKey(method.Input), svc)
+	}
+
+	m.Output, ok = svc.MessageByName[messageKey(method.Output)]
+	if !ok {
+		return nil, NewErrMessageNotFound(messageKey(method.Output), svc)
+	}
 
 	// Private methods are the last in the service chain.
 	if m.IsPrivate {
@@ -36,7 +44,6 @@ func NewMethod(svc *Service, method *protogen.Method) (*Method, error) {
 	}
 
 	methodName := options.MethodName(method)
-	var ok bool
 
 	// Methods of the latest service or deprecated methods chain directly to the
 	// private service.

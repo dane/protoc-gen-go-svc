@@ -25,7 +25,7 @@ func methodKey(method *protogen.Method) string {
 	return string(method.Desc.Name())
 }
 
-func buildMesageKey(svc *Service, messageName string) string {
+func buildMessageKey(svc *Service, messageName string) string {
 	return fmt.Sprintf("%s.%s", svc.ProtoPackageName, messageName)
 }
 

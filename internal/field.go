@@ -136,9 +136,13 @@ func isExternalFieldMessage(svc *Service, field *protogen.Field) bool {
 		return false
 	}
 
+	return isExternalMessage(svc, field.Message)
+}
+
+func isExternalMessage(svc *Service, message *protogen.Message) bool {
 	// Cannot rely on proto package names because messages don't have access to
 	// the proto package name.
-	return svc.ImportPath != string(field.Message.GoIdent.GoImportPath)
+	return svc.ImportPath != string(message.GoIdent.GoImportPath)
 }
 
 func isMatch(a, b *Field) bool {

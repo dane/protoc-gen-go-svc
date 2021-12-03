@@ -121,6 +121,24 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 	// Create services in order of private service then public services in
 	// decending order.
 	var svcChain []*Service
+
+	if p.Verbose {
+		defer func() {
+			if len(svcChain) == 0 {
+				return
+			}
+
+			// Output the service package name and the complete service in JSON
+			// format for debugging purposes. The each service will contain the
+			// subsequent services in the chain.
+			svc := svcChain[len(svcChain)-1]
+			fmt.Fprintf(os.Stderr, ">> %s\n", svc.ProtoPackageName)
+			enc := json.NewEncoder(os.Stderr)
+			enc.SetIndent("", "    ")
+			_ = enc.Encode(svc)
+		}()
+	}
+
 	for _, pkg := range allPackages {
 		svc, err := NewService(
 			pkg.ProtoName,
@@ -136,23 +154,11 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 			return err
 		}
 
-		// Output the service package name and the complete service in JSON
-		// format for debugging purposes. The each service will contain the
-		// subsequent services in the chain.
-		if p.Verbose {
-			fmt.Fprintf(os.Stderr, ">> %s\n", svc.ProtoPackageName)
-			enc := json.NewEncoder(os.Stderr)
-			enc.SetIndent("", "    ")
-			if err := enc.Encode(svc); err != nil {
-				return err
-			}
-		}
-
 		svcChain = append(svcChain, svc)
 
 		// Write service file.
-		importPath := protogen.GoImportPath(path.Join(svc.ServiceImportPath, svc.PackageName))
-		fileName := path.Join(svc.ServiceImportPath, svc.PackageName, FileName)
+		importPath := protogen.GoImportPath(path.Join(servicePackageName, svc.PackageName))
+		fileName := path.Join(servicePackageName, svc.PackageName, FileName)
 
 		file := plugin.NewGeneratedFile(fileName, importPath)
 		if err := render(file, svc.ProtoPackageName, serviceTemplate, svc); err != nil {
@@ -160,8 +166,8 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 		}
 
 		// Write testing service file.
-		importPath = protogen.GoImportPath(path.Join(svc.ServiceImportPath, svc.PackageName, "testing"))
-		fileName = path.Join(svc.ServiceImportPath, svc.PackageName, "testing", FileName)
+		importPath = protogen.GoImportPath(path.Join(servicePackageName, svc.PackageName, "testing"))
+		fileName = path.Join(servicePackageName, svc.PackageName, "testing", FileName)
 
 		if !svc.IsPrivate {
 			file = plugin.NewGeneratedFile(fileName, importPath)
