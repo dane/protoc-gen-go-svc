@@ -68,18 +68,65 @@ func NewService(
 
 	// Create messages. Fields are created after all messages have been created
 	// because oneofs and will reference messages.
-	for _, message := range messages {
-		msg, err := NewMessage(svc, message)
-		if err != nil {
-			return nil, NewErrCreateService(svc, err)
-		}
-
-		svc.Messages = append(svc.Messages, msg)
-		svc.MessageByName[messageKey(message)] = msg
+	if err := buildMessages(svc, messages, nil); err != nil {
+		return nil, err
 	}
 
 	// Iterate through messages again to ensure all messages are present that a
 	// field may reference.
+	if err := buildMessageFields(svc, messages); err != nil {
+		return nil, err
+	}
+
+	// Create methods. All messages will be present at this point.
+	for _, method := range service.Methods {
+		if isExternalMessage(svc, method.Input) {
+			if _, ok := svc.MessageByName[messageKey(method.Input)]; !ok {
+				ext := NewExternalMessage(method.Input)
+				svc.MessageByName[messageKey(method.Input)] = ext
+				svc.Messages = append(svc.Messages, ext)
+			}
+		}
+
+		if isExternalMessage(svc, method.Output) {
+			if _, ok := svc.MessageByName[messageKey(method.Output)]; !ok {
+				ext := NewExternalMessage(method.Output)
+				svc.MessageByName[messageKey(method.Output)] = ext
+				svc.Messages = append(svc.Messages, ext)
+			}
+		}
+
+		m, err := NewMethod(svc, method)
+		if err != nil {
+			return nil, NewErrCreateService(svc, err)
+		}
+
+		svc.Methods = append(svc.Methods, m)
+		svc.MethodByName[methodKey(method)] = m
+	}
+
+	return svc, nil
+}
+
+func buildMessages(svc *Service, messages []*protogen.Message, parent *protogen.Message) error {
+	for _, message := range messages {
+		msg, err := NewMessage(svc, message, parent)
+		if err != nil {
+			return NewErrCreateService(svc, err)
+		}
+
+		svc.Messages = append(svc.Messages, msg)
+		svc.MessageByName[messageKey(message)] = msg
+
+		if err := buildMessages(svc, message.Messages, message); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func buildMessageFields(svc *Service, messages []*protogen.Message) error {
 	for _, message := range messages {
 		for _, field := range message.Fields {
 			// If the field references a message from an external package, most
@@ -101,13 +148,14 @@ func NewService(
 				continue
 			}
 
-			// All package messages have been created already. There is no need
-			// to guard against the message not being present.
-			msg := svc.MessageByName[messageKey(message)]
+			msg, ok := svc.MessageByName[messageKey(message)]
+			if !ok {
+				return NewErrMessageNotFound(messageKey(message), svc)
+			}
 
 			f, err := NewField(svc, msg, field)
 			if err != nil {
-				return nil, NewErrCreateService(svc, err)
+				return NewErrCreateService(svc, err)
 			}
 
 			msg.Fields = append(msg.Fields, f)
@@ -121,24 +169,17 @@ func NewService(
 
 			f, err := NewOneOf(svc, msg, oneof)
 			if err != nil {
-				return nil, NewErrCreateService(svc, err)
+				return NewErrCreateService(svc, err)
 			}
 
 			msg.Fields = append(msg.Fields, f)
 			msg.FieldByName[oneOfKey(oneof)] = f
 		}
-	}
 
-	// Create methods. All messages will be present at this point.
-	for _, method := range service.Methods {
-		m, err := NewMethod(svc, method)
-		if err != nil {
-			return nil, NewErrCreateService(svc, err)
+		if err := buildMessageFields(svc, message.Messages); err != nil {
+			return err
 		}
-
-		svc.Methods = append(svc.Methods, m)
-		svc.MethodByName[methodKey(method)] = m
 	}
 
-	return svc, nil
+	return nil
 }
