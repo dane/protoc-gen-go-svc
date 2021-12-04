@@ -179,7 +179,7 @@ func (p *Plugin) Run(plugin *protogen.Plugin) error {
 
 	// Write services register wrapper file.
 	importPath := protogen.GoImportPath(serviceImportPath)
-	fileName := path.Join(serviceImportPath, FileName)
+	fileName := path.Join(servicePackageName, FileName)
 	file := plugin.NewGeneratedFile(fileName, importPath)
 	return render(file, "register", registerTemplate, RegisterService{
 		PackageName: servicePackageName,
