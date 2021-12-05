@@ -1,4 +1,6 @@
-export PATH := bin:$(PATH)
+PATH := bin:$(PATH)
+EXEC := $(if $(shell which podman), podman, docker)
+
 default: test
 	go mod tidy
 
@@ -40,3 +42,19 @@ example: build
 .PHONY: test
 test: example
 	cd example && go test ./...  -v
+
+ci-shell:
+	${EXEC} run \
+		--privileged \
+		--rm \
+		-v $(PWD):/go/src/github.com/dane/protoc-gen-go-svc \
+		-ti ghcr.io/dane/protoc-gen-go-svc \
+		/bin/bash
+
+.PHONY: diff
+diff: example
+	test `git diff | wc -l` -eq 0
+
+.PHONY: container
+container:
+	${EXEC} build -t ghcr.io/dane/protoc-gen-go-svc .
