@@ -1370,7 +1370,7 @@ func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mu
 
 	out, err := s.ToPublicCreateResponse(outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1397,7 +1397,7 @@ func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators
 
 	out, err := s.ToPublicGetResponse(outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1424,7 +1424,7 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 
 	out, err := s.ToPublicDeleteResponse(outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1451,7 +1451,7 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 
 	out, err := s.ToPublicUpdateResponse(outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1478,7 +1478,7 @@ func (s *Service) BatchImpl(ctx context.Context, in *publicpb.BatchRequest, muta
 
 	out, err := s.ToPublicBatchResponse(outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }

@@ -1316,7 +1316,7 @@ func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mu
 
 	out, err := s.ToPublicCreateResponse(outNext, outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1339,7 +1339,7 @@ func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators
 
 	out, err := s.ToPublicGetResponse(outNext, outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1362,7 +1362,7 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 
 	out, err := s.ToPublicDeleteResponse(outNext, outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
@@ -1389,7 +1389,7 @@ func (s *Service) ListImpl(ctx context.Context, in *publicpb.ListRequest, mutato
 
 	out, err := s.ToDeprecatedPublicListResponse(outPriv)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 	return out, outPriv, nil
 }
