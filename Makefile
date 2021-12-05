@@ -53,7 +53,8 @@ ci-shell:
 
 .PHONY: diff
 diff: example
-	test `git diff | wc -l` -eq 0
+	@go mod tidy
+	@test `git diff | wc -l` -eq 0
 
 .PHONY: container
 container:
