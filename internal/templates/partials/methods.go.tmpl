@@ -45,7 +45,7 @@
 
 				out, err := s.To{{ $deprecated }}Public{{ .Output.Name }}(outPriv)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 				}
 			{{ else if not .IsPrivate -}}
 				inNext := s.ToNext{{ .Input.Next.Name }}(in)
@@ -56,7 +56,7 @@
 
 				out, err := s.ToPublic{{ .Output.Name }}(outNext, outPriv)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 				}
 			{{ end -}}
 
