@@ -2,6 +2,7 @@
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/dane/protoc-gen-go-svc)][4]
 [![GoReportCard](https://img.shields.io/badge/go%20report-A-green.svg?style=flat)][5]
+[![CircleCI](https://circleci.com/gh/dane/protoc-gen-go-svc/tree/main.svg?style=svg)][6]
 
 
 A protoc plugin for generating versioned, forwards compatible gRPC services.
@@ -344,3 +345,4 @@ func main() {
 [3]: https://github.com/dane/protoc-gen-go-svc/blob/main/example/proto
 [4]: https://pkg.go.dev/github.com/dane/protoc-gen-go-svc
 [5]: https://goreportcard.com/report/github.com/dane/protoc-gen-go-svc
+[6]: https://circleci.com/gh/dane/protoc-gen-go-svc/tree/main
