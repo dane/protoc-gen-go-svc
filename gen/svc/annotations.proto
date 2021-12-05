@@ -9,37 +9,37 @@ option go_package = "github.com/dane/protoc-gen-go-svc/gen/svc;svc";
 extend google.protobuf.FileOptions {
   // go_package is the location where all service versions will be generated.
   // Each service package name will be a sub-package. 
-  string go_package = 1115;
+  string go_package = 1140;
 }
 
 extend google.protobuf.MethodOptions {
   // method see documentation of `MethodAnnotation`.
-  MethodAnnotation method = 1115;
+  MethodAnnotation method = 1140;
 }
 
 extend google.protobuf.MessageOptions {
   // message see documentation of `MessageAnnotation`.
-  MessageAnnotation message = 1115;
+  MessageAnnotation message = 1140;
 }
 
 extend google.protobuf.FieldOptions {
   // field see documentation of `FieldAnnotation`.
-  FieldAnnotation field = 1115;
+  FieldAnnotation field = 1140;
 };
 
 extend google.protobuf.EnumOptions {
   // enum see documentation of `EnumAnnotation`.
-  EnumAnnotation enum = 1115;
+  EnumAnnotation enum = 1140;
 }
 
 extend google.protobuf.OneofOptions {
   // oneof see documentation of `OneofAnnotation`.
-  OneofAnnotation oneof = 1115;
+  OneofAnnotation oneof = 1140;
 }
 
 extend google.protobuf.EnumValueOptions {
   // enum_value see documentation of `EnumValueAnnotation`.
-  EnumValueAnnotation enum_value = 1115;
+  EnumValueAnnotation enum_value = 1140;
 }
 
 message MethodAnnotation {
