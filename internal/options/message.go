@@ -23,3 +23,9 @@ func IsDeprecatedMessage(message *protogen.Message) bool {
 	annotation := proto.GetExtension(options, svc.E_Message).(*svc.MessageAnnotation)
 	return annotation.GetDeprecated()
 }
+
+func IsConverterEmpty(message *protogen.Message) bool {
+	options := message.Desc.Options().(*descriptorpb.MessageOptions)
+	annotation := proto.GetExtension(options, svc.E_Message).(*svc.MessageAnnotation)
+	return annotation.GetConverter().GetEmpty()
+}

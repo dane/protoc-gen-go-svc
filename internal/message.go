@@ -10,20 +10,21 @@ import (
 )
 
 type Message struct {
-	IsPrivate    bool
-	IsLatest     bool
-	IsDeprecated bool
-	IsExternal   bool
-	IsOneOf      bool
-	Name         string
-	ImportPath   string
-	PackageName  string
-	FullName     string
-	Private      *Message
-	Next         *Message
-	Parent       *Message
-	Fields       []*Field
-	FieldByName  map[string]*Field
+	IsPrivate        bool
+	IsLatest         bool
+	IsDeprecated     bool
+	IsExternal       bool
+	IsOneOf          bool
+	IsConverterEmpty bool
+	Name             string
+	ImportPath       string
+	PackageName      string
+	FullName         string
+	Private          *Message
+	Next             *Message
+	Parent           *Message
+	Fields           []*Field
+	FieldByName      map[string]*Field
 }
 
 // NewMessage creates a `Message`. An error will be returned if the message
@@ -39,15 +40,16 @@ func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, erro
 	}
 
 	msg := &Message{
-		IsPrivate:    svc.IsPrivate,
-		IsLatest:     svc.IsLatest,
-		IsDeprecated: options.IsDeprecatedMessage(message),
-		IsOneOf:      len(message.Oneofs) > 0,
-		ImportPath:   svc.ImportPath,
-		Name:         message.GoIdent.GoName,
-		FieldByName:  make(map[string]*Field),
-		Parent:       p,
-		FullName:     string(message.Desc.FullName()),
+		IsPrivate:        svc.IsPrivate,
+		IsLatest:         svc.IsLatest,
+		IsDeprecated:     options.IsDeprecatedMessage(message),
+		IsOneOf:          len(message.Oneofs) > 0,
+		IsConverterEmpty: options.IsConverterEmpty(message),
+		ImportPath:       svc.ImportPath,
+		Name:             message.GoIdent.GoName,
+		FieldByName:      make(map[string]*Field),
+		Parent:           p,
+		FullName:         string(message.Desc.FullName()),
 	}
 
 	// Private messages are the last in the service chain.
