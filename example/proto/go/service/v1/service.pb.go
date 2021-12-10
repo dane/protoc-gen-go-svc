@@ -917,28 +917,11 @@ func (c converter) ToNextDeleteResponse(in *publicpb.DeleteResponse) *nextpb.Del
 }
 
 func (c converter) ToDeprecatedPublicListRequest(priv *privatepb.ListRequest) (*publicpb.ListRequest, error) {
-	if priv == nil {
-		return nil, nil
-	}
-
-	required := make(validation.Errors)
-	if err := required.Filter(); err != nil {
-		return nil, err
-	}
-
-	var out publicpb.ListRequest
-	var err error
-
-	return &out, err
+	return nil, nil
 }
 
 func (c converter) ToPrivateListRequest(in *publicpb.ListRequest) *privatepb.ListRequest {
-	if in == nil {
-		return nil
-	}
-
-	var out privatepb.ListRequest
-	return &out
+	return nil
 }
 
 func (c converter) ToDeprecatedPublicListResponse(priv *privatepb.ListResponse) (*publicpb.ListResponse, error) {

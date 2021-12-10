@@ -99,6 +99,7 @@ message DeleteResponse {}
 
 message ListRequest {
   option (gen.svc.message).deprecated = true;
+  option (gen.svc.message).converter = { empty: true };
 }
 
 message ListResponse {
