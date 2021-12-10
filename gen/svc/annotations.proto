@@ -61,6 +61,11 @@ message MessageAnnotation {
   // deprecated indicates a message is not present in the next service version.
   // Deprecated messages must be present in the private service.
   bool deprecated = 2;
+
+  // converter is a map with a boolean field `empty`. Setting `empty` to true
+  // generates the `Converter` method, but with nil return values only. This is
+  // intended for cases where the conversion cannot be automated.
+  Converter converter = 3;
 }
 
 message FieldAnnotation {
@@ -193,4 +198,10 @@ message Number {
     double double = 2;
     uint64 uint64 = 3;
   }
+}
+
+message Converter {
+  // empty indicates the `Converter` method should be generated, but with no
+  // converting attempted and with nil return values.
+  bool empty = 1;
 }
