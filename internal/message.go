@@ -16,6 +16,7 @@ type Message struct {
 	IsExternal       bool
 	IsOneOf          bool
 	IsConverterEmpty bool
+	IsMatch          bool
 	Name             string
 	ImportPath       string
 	PackageName      string
@@ -117,6 +118,8 @@ func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, erro
 			return nil, NewErrMessageNotFound(messageName, svc.Private)
 		}
 
+		msg.IsMatch = isMessageMatch(msg, msg.Private)
+
 		return msg, nil
 	}
 
@@ -131,6 +134,7 @@ func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, erro
 		return nil, NewErrMessageNotFound(messageName, svc.Next)
 	}
 
+	msg.IsMatch = isMessageMatch(msg, msg.Next)
 	msg.Private = msg.Next.Private
 
 	return msg, nil
@@ -151,5 +155,43 @@ func NewExternalMessage(svc *Service, message *protogen.Message) (*Message, erro
 	importPath := strings.Split(msg.ImportPath, "/")
 	msg.PackageName = fmt.Sprintf("ext%s", importPath[len(importPath)-1])
 
-	return msg
+	if msg.IsPrivate {
+		return msg, nil
+	}
+
+	// Messages of the latest service or deprecated messages read/write directly
+	// to the private service.
+	messageName := messageKey(message)
+	var ok bool
+
+	if msg.IsLatest {
+		msg.Private, ok = svc.Private.MessageByName[messageName]
+		if !ok {
+			return nil, NewErrMessageNotFound(messageName, svc.Private)
+		}
+
+		msg.IsMatch = isMessageMatch(msg, msg.Private)
+
+		return msg, nil
+	}
+
+	// All other messages will chain to a message in the next service version.
+	msg.Next, ok = svc.Next.MessageByName[messageName]
+	if !ok {
+		return nil, NewErrMessageNotFound(messageName, svc.Next)
+	}
+
+	msg.IsMatch = isMessageMatch(msg, msg.Next)
+	msg.Private = msg.Next.Private
+
+	return msg, nil
+}
+
+func isMessageMatch(a, b *Message) bool {
+	// Messages must be in the same package and have the same name to match.
+	if a.ImportPath != b.ImportPath {
+		return false
+	}
+
+	return a.Name == b.Name
 }
