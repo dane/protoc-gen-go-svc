@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"fmt"
+
 	"google.golang.org/protobuf/compiler/protogen"
 
 	"github.com/dane/protoc-gen-go-svc/internal/options"
@@ -14,6 +16,30 @@ type EnumValue struct {
 	Next         *EnumValue
 	Private      *EnumValue
 	Receive      []*EnumValue
+}
+
+func (v *EnumValue) Type() string {
+	if v.IsPrivate {
+		return fmt.Sprintf("privatepb.%s", v.Name)
+	}
+
+	return fmt.Sprintf("publicpb.%s", v.Name)
+}
+
+func (v *EnumValue) NextType() string {
+	if v.Next == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("nextpb.%s", v.Next.Name)
+}
+
+func (v *EnumValue) PrivateType() string {
+	if v.Private == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("privatepb.%s", v.Private.Name)
 }
 
 // NewEnumValue creates a `EnumValue`. An error will be returned if the
