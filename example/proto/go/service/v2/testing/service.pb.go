@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	extemptypb "google.golang.org/protobuf/types/known/emptypb"
 	exttimestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
@@ -56,8 +57,8 @@ func NewCreateConversionTest(t *testing.T, params Params, options []service.Opti
 
 		ctx := context.Background()
 		s := &server{
-			CreateRequest:  &privateIn,
-			CreateResponse: &privateOut,
+			CreateInput:  &privateIn,
+			CreateOutput: &privateOut,
 		}
 		addr, cleanup := startServer(t, s, options)
 		defer cleanup()
@@ -77,7 +78,7 @@ func NewCreateConversionTest(t *testing.T, params Params, options []service.Opti
 			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
 		}
 
-		if s.notEqual {
+		if s.diff != "" {
 			t.Fatal(s.diff)
 		}
 	})
@@ -111,8 +112,8 @@ func NewGetConversionTest(t *testing.T, params Params, options []service.Option)
 
 		ctx := context.Background()
 		s := &server{
-			FetchRequest:  &privateIn,
-			FetchResponse: &privateOut,
+			FetchInput:  &privateIn,
+			FetchOutput: &privateOut,
 		}
 		addr, cleanup := startServer(t, s, options)
 		defer cleanup()
@@ -132,7 +133,7 @@ func NewGetConversionTest(t *testing.T, params Params, options []service.Option)
 			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
 		}
 
-		if s.notEqual {
+		if s.diff != "" {
 			t.Fatal(s.diff)
 		}
 	})
@@ -166,8 +167,8 @@ func NewDeleteConversionTest(t *testing.T, params Params, options []service.Opti
 
 		ctx := context.Background()
 		s := &server{
-			DeleteRequest:  &privateIn,
-			DeleteResponse: &privateOut,
+			DeleteInput:  &privateIn,
+			DeleteOutput: &privateOut,
 		}
 		addr, cleanup := startServer(t, s, options)
 		defer cleanup()
@@ -187,7 +188,7 @@ func NewDeleteConversionTest(t *testing.T, params Params, options []service.Opti
 			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
 		}
 
-		if s.notEqual {
+		if s.diff != "" {
 			t.Fatal(s.diff)
 		}
 	})
@@ -221,8 +222,8 @@ func NewUpdateConversionTest(t *testing.T, params Params, options []service.Opti
 
 		ctx := context.Background()
 		s := &server{
-			UpdateRequest:  &privateIn,
-			UpdateResponse: &privateOut,
+			UpdateInput:  &privateIn,
+			UpdateOutput: &privateOut,
 		}
 		addr, cleanup := startServer(t, s, options)
 		defer cleanup()
@@ -242,7 +243,7 @@ func NewUpdateConversionTest(t *testing.T, params Params, options []service.Opti
 			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
 		}
 
-		if s.notEqual {
+		if s.diff != "" {
 			t.Fatal(s.diff)
 		}
 	})
@@ -276,8 +277,8 @@ func NewBatchConversionTest(t *testing.T, params Params, options []service.Optio
 
 		ctx := context.Background()
 		s := &server{
-			BatchRequest:  &privateIn,
-			BatchResponse: &privateOut,
+			BatchInput:  &privateIn,
+			BatchOutput: &privateOut,
 		}
 		addr, cleanup := startServer(t, s, options)
 		defer cleanup()
@@ -297,7 +298,62 @@ func NewBatchConversionTest(t *testing.T, params Params, options []service.Optio
 			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
 		}
 
-		if s.notEqual {
+		if s.diff != "" {
+			t.Fatal(s.diff)
+		}
+	})
+}
+func NewPingConversionTest(t *testing.T, params Params, options []service.Option) {
+	t.Run(`verify conversions between "v2" and "private"`, func(t *testing.T) {
+		var (
+			publicIn   extemptypb.Empty
+			publicOut  extemptypb.Empty
+			privateIn  extemptypb.Empty
+			privateOut extemptypb.Empty
+		)
+
+		files := map[string]protoreflect.ProtoMessage{
+			params.PublicInput:   &publicIn,
+			params.PublicOutput:  &publicOut,
+			params.PrivateInput:  &privateIn,
+			params.PrivateOutput: &privateOut,
+		}
+
+		for fileName, dst := range files {
+			b, err := ioutil.ReadFile(fileName)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := protojson.Unmarshal(b, dst); err != nil {
+				t.Fatalf("%s: %s", fileName, err)
+			}
+		}
+
+		ctx := context.Background()
+		s := &server{
+			PingInput:  &privateIn,
+			PingOutput: &privateOut,
+		}
+		addr, cleanup := startServer(t, s, options)
+		defer cleanup()
+
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		client := publicpb.NewPeopleClient(conn)
+		out, err := client.Ping(ctx, &publicIn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !cmp.Equal(out, &publicOut, ignore()...) {
+			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
+		}
+
+		if s.diff != "" {
 			t.Fatal(s.diff)
 		}
 	})
@@ -322,59 +378,62 @@ func startServer(t *testing.T, ts privatepb.PeopleServer, options []service.Opti
 
 type server struct {
 	privatepb.PeopleServer
-	notEqual       bool
-	diff           string
-	CreateRequest  *privatepb.CreateRequest
-	CreateResponse *privatepb.CreateResponse
-	FetchRequest   *privatepb.FetchRequest
-	FetchResponse  *privatepb.FetchResponse
-	DeleteRequest  *privatepb.DeleteRequest
-	DeleteResponse *privatepb.DeleteResponse
-	UpdateRequest  *privatepb.UpdateRequest
-	UpdateResponse *privatepb.UpdateResponse
-	BatchRequest   *privatepb.BatchRequest
-	BatchResponse  *privatepb.BatchResponse
+	diff         string
+	CreateInput  *privatepb.CreateRequest
+	CreateOutput *privatepb.CreateResponse
+	FetchInput   *privatepb.FetchRequest
+	FetchOutput  *privatepb.FetchResponse
+	DeleteInput  *privatepb.DeleteRequest
+	DeleteOutput *privatepb.DeleteResponse
+	UpdateInput  *privatepb.UpdateRequest
+	UpdateOutput *privatepb.UpdateResponse
+	BatchInput   *privatepb.BatchRequest
+	BatchOutput  *privatepb.BatchResponse
+	PingInput    *extemptypb.Empty
+	PingOutput   *extemptypb.Empty
 }
 
 func (s *server) Create(_ context.Context, in *privatepb.CreateRequest) (*privatepb.CreateResponse, error) {
-	if !cmp.Equal(in, s.CreateRequest, ignore()...) {
-		s.notEqual = true
-		s.diff = cmp.Diff(in, s.CreateRequest, ignore()...)
+	if !cmp.Equal(in, s.CreateInput, ignore()...) {
+		s.diff = cmp.Diff(in, s.CreateInput, ignore()...)
 	}
 
-	return s.CreateResponse, nil
+	return s.CreateOutput, nil
 }
 func (s *server) Fetch(_ context.Context, in *privatepb.FetchRequest) (*privatepb.FetchResponse, error) {
-	if !cmp.Equal(in, s.FetchRequest, ignore()...) {
-		s.notEqual = true
-		s.diff = cmp.Diff(in, s.FetchRequest, ignore()...)
+	if !cmp.Equal(in, s.FetchInput, ignore()...) {
+		s.diff = cmp.Diff(in, s.FetchInput, ignore()...)
 	}
 
-	return s.FetchResponse, nil
+	return s.FetchOutput, nil
 }
 func (s *server) Delete(_ context.Context, in *privatepb.DeleteRequest) (*privatepb.DeleteResponse, error) {
-	if !cmp.Equal(in, s.DeleteRequest, ignore()...) {
-		s.notEqual = true
-		s.diff = cmp.Diff(in, s.DeleteRequest, ignore()...)
+	if !cmp.Equal(in, s.DeleteInput, ignore()...) {
+		s.diff = cmp.Diff(in, s.DeleteInput, ignore()...)
 	}
 
-	return s.DeleteResponse, nil
+	return s.DeleteOutput, nil
 }
 func (s *server) Update(_ context.Context, in *privatepb.UpdateRequest) (*privatepb.UpdateResponse, error) {
-	if !cmp.Equal(in, s.UpdateRequest, ignore()...) {
-		s.notEqual = true
-		s.diff = cmp.Diff(in, s.UpdateRequest, ignore()...)
+	if !cmp.Equal(in, s.UpdateInput, ignore()...) {
+		s.diff = cmp.Diff(in, s.UpdateInput, ignore()...)
 	}
 
-	return s.UpdateResponse, nil
+	return s.UpdateOutput, nil
 }
 func (s *server) Batch(_ context.Context, in *privatepb.BatchRequest) (*privatepb.BatchResponse, error) {
-	if !cmp.Equal(in, s.BatchRequest, ignore()...) {
-		s.notEqual = true
-		s.diff = cmp.Diff(in, s.BatchRequest, ignore()...)
+	if !cmp.Equal(in, s.BatchInput, ignore()...) {
+		s.diff = cmp.Diff(in, s.BatchInput, ignore()...)
 	}
 
-	return s.BatchResponse, nil
+	return s.BatchOutput, nil
+}
+func (s *server) Ping(_ context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
+	if !cmp.Equal(in, s.PingInput, ignore()...) {
+		s.diff = cmp.Diff(in, s.PingInput, ignore()...)
+	}
+
+	return s.PingOutput, nil
 }
 func ignore() []cmp.Option {
 	return []cmp.Option{
@@ -409,5 +468,6 @@ func ignore() []cmp.Option {
 		cmpopts.IgnoreUnexported(publicpb.BatchResponse{}),
 		cmpopts.IgnoreUnexported(privatepb.BatchResponse{}),
 		cmpopts.IgnoreUnexported(exttimestamppb.Timestamp{}),
+		cmpopts.IgnoreUnexported(extemptypb.Empty{}),
 	}
 }

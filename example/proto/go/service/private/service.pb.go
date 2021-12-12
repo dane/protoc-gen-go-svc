@@ -11,6 +11,7 @@ import (
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	extemptypb "google.golang.org/protobuf/types/known/emptypb"
 	exttimestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
@@ -112,6 +113,8 @@ func SetBatchRequest_Creates(value []*privatepb.CreateRequest) BatchRequestMutat
 	}
 }
 
+type ExternalEmptyMutator func(*extemptypb.Empty)
+
 func NewValidator() Validator {
 	return validator{}
 }
@@ -154,6 +157,8 @@ type Validator interface {
 	ByBatchResponse(interface{}) error
 	ValidateExternalTimestamp(*exttimestamppb.Timestamp) error
 	ByExternalTimestamp(interface{}) error
+	ValidateExternalEmpty(*extemptypb.Empty) error
+	ByExternalEmpty(interface{}) error
 }
 
 type validator struct{}
@@ -543,6 +548,21 @@ func (v validator) ByExternalTimestamp(value interface{}) error {
 
 	return v.ValidateExternalTimestamp(in)
 }
+func (v validator) ValidateExternalEmpty(in *extemptypb.Empty) error {
+	return nil
+}
+
+func (v validator) ByExternalEmpty(value interface{}) error {
+	var in *extemptypb.Empty
+	if v, ok := value.(*extemptypb.Empty); ok {
+		in = v
+	} else {
+		v := value.(extemptypb.Empty)
+		in = &v
+	}
+
+	return v.ValidateExternalEmpty(in)
+}
 
 func (s *Service) Create(ctx context.Context, in *privatepb.CreateRequest) (*privatepb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
@@ -552,7 +572,6 @@ func (s *Service) Create(ctx context.Context, in *privatepb.CreateRequest) (*pri
 	out, err := s.Impl.Create(ctx, in)
 	return out, err
 }
-
 func (s *Service) Fetch(ctx context.Context, in *privatepb.FetchRequest) (*privatepb.FetchResponse, error) {
 	if err := s.ValidateFetchRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
@@ -561,7 +580,6 @@ func (s *Service) Fetch(ctx context.Context, in *privatepb.FetchRequest) (*priva
 	out, err := s.Impl.Fetch(ctx, in)
 	return out, err
 }
-
 func (s *Service) Delete(ctx context.Context, in *privatepb.DeleteRequest) (*privatepb.DeleteResponse, error) {
 	if err := s.ValidateDeleteRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
@@ -570,7 +588,6 @@ func (s *Service) Delete(ctx context.Context, in *privatepb.DeleteRequest) (*pri
 	out, err := s.Impl.Delete(ctx, in)
 	return out, err
 }
-
 func (s *Service) List(ctx context.Context, in *privatepb.ListRequest) (*privatepb.ListResponse, error) {
 	if err := s.ValidateListRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
@@ -579,7 +596,6 @@ func (s *Service) List(ctx context.Context, in *privatepb.ListRequest) (*private
 	out, err := s.Impl.List(ctx, in)
 	return out, err
 }
-
 func (s *Service) Update(ctx context.Context, in *privatepb.UpdateRequest) (*privatepb.UpdateResponse, error) {
 	if err := s.ValidateUpdateRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
@@ -588,12 +604,19 @@ func (s *Service) Update(ctx context.Context, in *privatepb.UpdateRequest) (*pri
 	out, err := s.Impl.Update(ctx, in)
 	return out, err
 }
-
 func (s *Service) Batch(ctx context.Context, in *privatepb.BatchRequest) (*privatepb.BatchResponse, error) {
 	if err := s.ValidateBatchRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 
 	out, err := s.Impl.Batch(ctx, in)
+	return out, err
+}
+func (s *Service) Ping(ctx context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
+	if err := s.ValidateExternalEmpty(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, err := s.Impl.Ping(ctx, in)
 	return out, err
 }
