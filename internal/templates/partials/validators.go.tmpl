@@ -6,18 +6,8 @@ func NewValidator() Validator {
 type Validator interface {
 	Name() string
 	{{ range . -}}
-		{{ $packageName := "publicpb" -}}
-		{{ if .IsPrivate -}}
-			{{ $packageName = "privatepb" -}}
-		{{ end -}}
-
-		{{ $prefix := "" -}}
-		{{ if .IsExternal -}}
-			{{ $prefix = "External" -}}
-			{{ $packageName = .PackageName -}}
-		{{ end -}}
-		Validate{{ $prefix }}{{ .Name }}(*{{ $packageName }}.{{ .Name }}) error
-		By{{ $prefix }}{{ .Name }}(interface{}) error
+		Validate{{ .Ref }}(*{{ .Type }}) error
+		By{{ .Ref }}(interface{}) error
 	{{ end -}}
 }
 
@@ -28,20 +18,11 @@ func (v validator) Name() string {
 }
 
 {{ range . -}}
-	{{ $packageName := "publicpb" -}}
-	{{ if .IsPrivate -}}
-		{{ $packageName = "privatepb" -}}
-	{{ end -}}
-
-	{{ $prefix := "" -}}
-	{{ if .IsExternal -}}
-		{{ $prefix = "External" -}}
-		{{ $packageName = .PackageName -}}
-	{{ end -}}
-	func(v validator) Validate{{ $prefix }}{{ .Name }}(in *{{ $packageName }}.{{ .Name }}) error {
+	func(v validator) Validate{{ .Ref }}(in *{{ .Type }}) error {
 		{{ if .IsExternal -}}
 			return nil
 		{{ else -}}
+
 		return validation.ValidateStruct(in,
 			{{ range .Fields -}}
 			validation.Field(&in.{{ .Name }},
@@ -58,17 +39,17 @@ func (v validator) Name() string {
 		{{ end -}}
 	}
 
-	func (v validator) By{{ $prefix }}{{ .Name }}(value interface{}) error {
-		var in *{{ $packageName }}.{{ .Name }}
-		if v, ok := value.(*{{ $packageName }}.{{ .Name }}); ok {
+	func (v validator) By{{ .Ref }}(value interface{}) error {
+		var in *{{ .Type }}
+		if v, ok := value.(*{{ .Type }}); ok {
 			in = v
 		} else {
-			v := value.({{ $packageName }}.{{ .Name }})
+			v := value.({{ .Type }})
 			in = &v
 		}
 
-		return v.Validate{{ $prefix }}{{ .Name }}(in)
+		return v.Validate{{ .Ref }}(in)
 	}
 {{ end -}}
-{{ end -}}{{/* end validators */}}
+{{ end -}}
 
