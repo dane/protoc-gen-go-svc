@@ -21,13 +21,17 @@ var (
 	//go:embed templates/partials/mutators.go.tmpl
 	mutatorsPartial string
 
-	//go:embed templates/partials/methods.go.tmpl
-	methodsPartial string
+	//go:embed templates/partials/handlers.go.tmpl
+	handlersPartial string
+
+	//go:embed templates/partials/impls.go.tmpl
+	implsPartial string
 )
 
 var Partials = []string{
 	convertersPartial,
 	validatorsPartial,
 	mutatorsPartial,
-	methodsPartial,
+	handlersPartial,
+	implsPartial,
 }
