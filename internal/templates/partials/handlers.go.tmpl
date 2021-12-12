@@ -1,0 +1,17 @@
+{{ define "handlers" -}}
+	{{ range . -}}
+		func (s *Service) {{ .Name }}(ctx context.Context, in *{{ .Input.Type }}) (*{{ .Output.Type }}, error) {
+			if err := s.Validate{{ .Input.Ref }}(in); err != nil {
+				return nil, status.Errorf(codes.InvalidArgument,"%s",  err)
+			}
+
+			{{ if .IsPrivate -}}
+				out, err := s.Impl.{{ .Name }}(ctx, in)
+				return out, err
+			{{ else -}}
+				out, _, err := s.{{ .Name }}Impl(ctx, in)
+				return out, err
+			{{ end -}}
+		}
+	{{ end -}}
+{{ end -}}

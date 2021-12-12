@@ -1,0 +1,48 @@
+{{ define "impls" -}}
+	{{ range $method := . -}}
+		func (s *Service) {{ .Name }}Impl(ctx context.Context, in *{{ .Input.Type }}, mutators ...private.{{ .Input.Private.Ref }}Mutator) (*{{ .Output.Type }}, *{{ .Output.PrivateType }}, error) {
+			// Set mutators for all deprecated fields
+			{{ range .Input.Fields -}}
+				{{ if .IsDeprecated -}}
+					mutators = append(mutators, private.Set{{ $method.Input.Ref }}_{{ .Private.Name }}(in.{{ .Name }}))
+				{{ end -}}
+			{{ end -}}
+
+			{{ if or .IsLatest .IsDeprecated -}}
+				inPriv := s.ToPrivate{{ .Input.Private.Ref }}(in)
+				for _, mutator := range mutators {
+					mutator(inPriv)
+				}
+
+				outPriv, err := s.Private.{{ .Private.Name }}(ctx, inPriv)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				{{ $deprecated := "" -}}
+				{{ if .IsDeprecated -}}
+					{{ $deprecated = "Deprecated" }}
+				{{ end -}}
+
+				out, err := s.To{{ $deprecated }}Public{{ .Output.Ref }}(outPriv)
+				if err != nil {
+					return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+				}
+			{{ else if not .IsPrivate -}}
+				inNext := s.ToNext{{ .Input.Next.Ref }}(in)
+				outNext, outPriv, err := s.Next.{{ .Next.Name }}Impl(ctx, inNext, mutators...)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				out, err := s.ToPublic{{ .Output.Ref }}(outNext, outPriv)
+				if err != nil {
+					return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+				}
+			{{ end -}}
+
+			return out, outPriv, nil
+		}
+	{{ end -}}
+{{ end -}}
+

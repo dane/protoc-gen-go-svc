@@ -162,10 +162,5 @@ func isMatch(a, b *Field) bool {
 		return true
 	}
 
-	// Messages must be in the same package and have the same name to match.
-	if a.Message.ImportPath != b.Message.ImportPath {
-		return false
-	}
-
-	return a.Message.Name == b.Message.Name
+	return isMessageMatch(a.Message, b.Message)
 }

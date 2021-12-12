@@ -5,6 +5,7 @@ package example.v1;
 option go_package = "github.com/dane/protoc-gen-go-svc/example/proto/go/v1;v1";
 option (gen.svc.go_package) = "github.com/dane/protoc-gen-go-svc/example/proto/go/service;service";
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "gen/svc/annotations.proto";
 
@@ -15,6 +16,7 @@ service People {
   rpc List(ListRequest) returns (ListResponse) {
     option (gen.svc.method).deprecated = true;
   };
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 message Person {

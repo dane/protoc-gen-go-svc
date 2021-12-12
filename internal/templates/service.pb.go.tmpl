@@ -79,4 +79,8 @@ type Service struct {
 
 {{ template "validators" .Messages }}
 
-{{ template "methods" .Methods }}
+{{ template "handlers" .Methods }}
+
+{{ if not .IsPrivate -}}
+	{{ template "impls" .Methods }}
+{{ end -}}

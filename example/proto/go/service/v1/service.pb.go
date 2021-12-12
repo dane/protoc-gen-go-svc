@@ -11,6 +11,7 @@ import (
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	extemptypb "google.golang.org/protobuf/types/known/emptypb"
 	exttimestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
@@ -56,51 +57,74 @@ type Converter interface {
 	ToPublicPerson(*nextpb.Person, *privatepb.Person) (*publicpb.Person, error)
 	ToDeprecatedPublicPerson(*privatepb.Person) (*publicpb.Person, error)
 	ToPrivatePerson(*publicpb.Person) *privatepb.Person
+
 	ToNextPerson(*publicpb.Person) *nextpb.Person
 	ToPublicHobby(*nextpb.Hobby, *privatepb.Hobby) (*publicpb.Hobby, error)
 	ToDeprecatedPublicHobby(*privatepb.Hobby) (*publicpb.Hobby, error)
 	ToPrivateHobby(*publicpb.Hobby) *privatepb.Hobby
+
 	ToNextHobby(*publicpb.Hobby) *nextpb.Hobby
 	ToPublicCoding(*nextpb.Coding, *privatepb.Coding) (*publicpb.Coding, error)
 	ToDeprecatedPublicCoding(*privatepb.Coding) (*publicpb.Coding, error)
 	ToPrivateCoding(*publicpb.Coding) *privatepb.Coding
+
 	ToNextCoding(*publicpb.Coding) *nextpb.Coding
 	ToPublicReading(*nextpb.Reading, *privatepb.Reading) (*publicpb.Reading, error)
 	ToDeprecatedPublicReading(*privatepb.Reading) (*publicpb.Reading, error)
 	ToPrivateReading(*publicpb.Reading) *privatepb.Reading
+
 	ToNextReading(*publicpb.Reading) *nextpb.Reading
 	ToPublicBiking(*nextpb.Cycling, *privatepb.Cycling) (*publicpb.Biking, error)
 	ToDeprecatedPublicBiking(*privatepb.Cycling) (*publicpb.Biking, error)
 	ToPrivateCycling(*publicpb.Biking) *privatepb.Cycling
+
 	ToNextCycling(*publicpb.Biking) *nextpb.Cycling
 	ToPublicCreateRequest(*nextpb.CreateRequest, *privatepb.CreateRequest) (*publicpb.CreateRequest, error)
 	ToDeprecatedPublicCreateRequest(*privatepb.CreateRequest) (*publicpb.CreateRequest, error)
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
+
 	ToNextCreateRequest(*publicpb.CreateRequest) *nextpb.CreateRequest
 	ToPublicCreateResponse(*nextpb.CreateResponse, *privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToDeprecatedPublicCreateResponse(*privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToPrivateCreateResponse(*publicpb.CreateResponse) *privatepb.CreateResponse
+
 	ToNextCreateResponse(*publicpb.CreateResponse) *nextpb.CreateResponse
 	ToPublicGetRequest(*nextpb.GetRequest, *privatepb.FetchRequest) (*publicpb.GetRequest, error)
 	ToDeprecatedPublicGetRequest(*privatepb.FetchRequest) (*publicpb.GetRequest, error)
 	ToPrivateFetchRequest(*publicpb.GetRequest) *privatepb.FetchRequest
+
 	ToNextGetRequest(*publicpb.GetRequest) *nextpb.GetRequest
 	ToPublicGetResponse(*nextpb.GetResponse, *privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToDeprecatedPublicGetResponse(*privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToPrivateFetchResponse(*publicpb.GetResponse) *privatepb.FetchResponse
+
 	ToNextGetResponse(*publicpb.GetResponse) *nextpb.GetResponse
 	ToPublicDeleteRequest(*nextpb.DeleteRequest, *privatepb.DeleteRequest) (*publicpb.DeleteRequest, error)
 	ToDeprecatedPublicDeleteRequest(*privatepb.DeleteRequest) (*publicpb.DeleteRequest, error)
 	ToPrivateDeleteRequest(*publicpb.DeleteRequest) *privatepb.DeleteRequest
+
 	ToNextDeleteRequest(*publicpb.DeleteRequest) *nextpb.DeleteRequest
 	ToPublicDeleteResponse(*nextpb.DeleteResponse, *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
 	ToDeprecatedPublicDeleteResponse(*privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
 	ToPrivateDeleteResponse(*publicpb.DeleteResponse) *privatepb.DeleteResponse
+
 	ToNextDeleteResponse(*publicpb.DeleteResponse) *nextpb.DeleteResponse
 	ToDeprecatedPublicListRequest(*privatepb.ListRequest) (*publicpb.ListRequest, error)
 	ToPrivateListRequest(*publicpb.ListRequest) *privatepb.ListRequest
+
 	ToDeprecatedPublicListResponse(*privatepb.ListResponse) (*publicpb.ListResponse, error)
 	ToPrivateListResponse(*publicpb.ListResponse) *privatepb.ListResponse
+
+	ToPublicExternalTimestamp(*exttimestamppb.Timestamp, *exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error)
+	ToDeprecatedPublicExternalTimestamp(*exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error)
+	ToPrivateExternalTimestamp(*exttimestamppb.Timestamp) *exttimestamppb.Timestamp
+
+	ToNextExternalTimestamp(*exttimestamppb.Timestamp) *exttimestamppb.Timestamp
+	ToPublicExternalEmpty(*extemptypb.Empty, *extemptypb.Empty) (*extemptypb.Empty, error)
+	ToDeprecatedPublicExternalEmpty(*extemptypb.Empty) (*extemptypb.Empty, error)
+	ToPrivateExternalEmpty(*extemptypb.Empty) *extemptypb.Empty
+
+	ToNextExternalEmpty(*extemptypb.Empty) *extemptypb.Empty
 }
 
 type converter struct{}
@@ -149,7 +173,6 @@ func (c converter) ToPublicPerson(in *nextpb.Person, priv *privatepb.Person) (*p
 	}
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicPerson(priv *privatepb.Person) (*publicpb.Person, error) {
 	if priv == nil {
 		return nil, nil
@@ -276,7 +299,6 @@ func (c converter) ToPublicHobby(in *nextpb.Hobby, priv *privatepb.Hobby) (*publ
 	}
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicHobby(priv *privatepb.Hobby) (*publicpb.Hobby, error) {
 	if priv == nil {
 		return nil, nil
@@ -381,7 +403,6 @@ func (c converter) ToPublicCoding(in *nextpb.Coding, priv *privatepb.Coding) (*p
 	out.Language = in.Language
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicCoding(priv *privatepb.Coding) (*publicpb.Coding, error) {
 	if priv == nil {
 		return nil, nil
@@ -435,7 +456,6 @@ func (c converter) ToPublicReading(in *nextpb.Reading, priv *privatepb.Reading) 
 	out.Genre = in.Genre
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicReading(priv *privatepb.Reading) (*publicpb.Reading, error) {
 	if priv == nil {
 		return nil, nil
@@ -489,7 +509,6 @@ func (c converter) ToPublicBiking(in *nextpb.Cycling, priv *privatepb.Cycling) (
 	out.Style = in.Style
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicBiking(priv *privatepb.Cycling) (*publicpb.Biking, error) {
 	if priv == nil {
 		return nil, nil
@@ -561,7 +580,6 @@ func (c converter) ToPublicCreateRequest(in *nextpb.CreateRequest, priv *private
 	}
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicCreateRequest(priv *privatepb.CreateRequest) (*publicpb.CreateRequest, error) {
 	if priv == nil {
 		return nil, nil
@@ -656,7 +674,6 @@ func (c converter) ToPublicCreateResponse(in *nextpb.CreateResponse, priv *priva
 	}
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicCreateResponse(priv *privatepb.CreateResponse) (*publicpb.CreateResponse, error) {
 	if priv == nil {
 		return nil, nil
@@ -713,7 +730,6 @@ func (c converter) ToPublicGetRequest(in *nextpb.GetRequest, priv *privatepb.Fet
 	out.Id = in.Id
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicGetRequest(priv *privatepb.FetchRequest) (*publicpb.GetRequest, error) {
 	if priv == nil {
 		return nil, nil
@@ -770,7 +786,6 @@ func (c converter) ToPublicGetResponse(in *nextpb.GetResponse, priv *privatepb.F
 	}
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicGetResponse(priv *privatepb.FetchResponse) (*publicpb.GetResponse, error) {
 	if priv == nil {
 		return nil, nil
@@ -827,7 +842,6 @@ func (c converter) ToPublicDeleteRequest(in *nextpb.DeleteRequest, priv *private
 	out.Id = in.Id
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicDeleteRequest(priv *privatepb.DeleteRequest) (*publicpb.DeleteRequest, error) {
 	if priv == nil {
 		return nil, nil
@@ -880,7 +894,6 @@ func (c converter) ToPublicDeleteResponse(in *nextpb.DeleteResponse, priv *priva
 
 	return &out, err
 }
-
 func (c converter) ToDeprecatedPublicDeleteResponse(priv *privatepb.DeleteResponse) (*publicpb.DeleteResponse, error) {
 	if priv == nil {
 		return nil, nil
@@ -915,7 +928,6 @@ func (c converter) ToNextDeleteResponse(in *publicpb.DeleteResponse) *nextpb.Del
 
 	return &out
 }
-
 func (c converter) ToDeprecatedPublicListRequest(priv *privatepb.ListRequest) (*publicpb.ListRequest, error) {
 	return nil, nil
 }
@@ -960,6 +972,35 @@ func (c converter) ToPrivateListResponse(in *publicpb.ListResponse) *privatepb.L
 	return &out
 }
 
+func (c converter) ToPublicExternalTimestamp(in *exttimestamppb.Timestamp, priv *exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error) {
+	return in, nil
+}
+func (c converter) ToDeprecatedPublicExternalTimestamp(priv *exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error) {
+	return priv, nil
+}
+
+func (c converter) ToPrivateExternalTimestamp(in *exttimestamppb.Timestamp) *exttimestamppb.Timestamp {
+	return in
+}
+
+func (c converter) ToNextExternalTimestamp(in *exttimestamppb.Timestamp) *exttimestamppb.Timestamp {
+	return in
+}
+func (c converter) ToPublicExternalEmpty(in *extemptypb.Empty, priv *extemptypb.Empty) (*extemptypb.Empty, error) {
+	return in, nil
+}
+func (c converter) ToDeprecatedPublicExternalEmpty(priv *extemptypb.Empty) (*extemptypb.Empty, error) {
+	return priv, nil
+}
+
+func (c converter) ToPrivateExternalEmpty(in *extemptypb.Empty) *extemptypb.Empty {
+	return in
+}
+
+func (c converter) ToNextExternalEmpty(in *extemptypb.Empty) *extemptypb.Empty {
+	return in
+}
+
 func NewValidator() Validator {
 	return validator{}
 }
@@ -994,6 +1035,8 @@ type Validator interface {
 	ByListResponse(interface{}) error
 	ValidateExternalTimestamp(*exttimestamppb.Timestamp) error
 	ByExternalTimestamp(interface{}) error
+	ValidateExternalEmpty(*extemptypb.Empty) error
+	ByExternalEmpty(interface{}) error
 }
 
 type validator struct{}
@@ -1277,6 +1320,21 @@ func (v validator) ByExternalTimestamp(value interface{}) error {
 
 	return v.ValidateExternalTimestamp(in)
 }
+func (v validator) ValidateExternalEmpty(in *extemptypb.Empty) error {
+	return nil
+}
+
+func (v validator) ByExternalEmpty(value interface{}) error {
+	var in *extemptypb.Empty
+	if v, ok := value.(*extemptypb.Empty); ok {
+		in = v
+	} else {
+		v := value.(extemptypb.Empty)
+		in = &v
+	}
+
+	return v.ValidateExternalEmpty(in)
+}
 
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
@@ -1284,6 +1342,38 @@ func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publ
 	}
 
 	out, _, err := s.CreateImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
+	if err := s.ValidateGetRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.GetImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
+	if err := s.ValidateDeleteRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.DeleteImpl(ctx, in)
+	return out, err
+}
+func (s *Service) List(ctx context.Context, in *publicpb.ListRequest) (*publicpb.ListResponse, error) {
+	if err := s.ValidateListRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.ListImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Ping(ctx context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
+	if err := s.ValidateExternalEmpty(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.PingImpl(ctx, in)
 	return out, err
 }
 
@@ -1303,15 +1393,6 @@ func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mu
 	}
 	return out, outPriv, nil
 }
-func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
-	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.GetImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators ...private.FetchRequestMutator) (*publicpb.GetResponse, *privatepb.FetchResponse, error) {
 	// Set mutators for all deprecated fields
 	inNext := s.ToNextGetRequest(in)
@@ -1326,15 +1407,6 @@ func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators
 	}
 	return out, outPriv, nil
 }
-func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
-	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.DeleteImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mutators ...private.DeleteRequestMutator) (*publicpb.DeleteResponse, *privatepb.DeleteResponse, error) {
 	// Set mutators for all deprecated fields
 	inNext := s.ToNextDeleteRequest(in)
@@ -1349,15 +1421,6 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 	}
 	return out, outPriv, nil
 }
-func (s *Service) List(ctx context.Context, in *publicpb.ListRequest) (*publicpb.ListResponse, error) {
-	if err := s.ValidateListRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.ListImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) ListImpl(ctx context.Context, in *publicpb.ListRequest, mutators ...private.ListRequestMutator) (*publicpb.ListResponse, *privatepb.ListResponse, error) {
 	// Set mutators for all deprecated fields
 	inPriv := s.ToPrivateListRequest(in)
@@ -1371,6 +1434,20 @@ func (s *Service) ListImpl(ctx context.Context, in *publicpb.ListRequest, mutato
 	}
 
 	out, err := s.ToDeprecatedPublicListResponse(outPriv)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+	}
+	return out, outPriv, nil
+}
+func (s *Service) PingImpl(ctx context.Context, in *extemptypb.Empty, mutators ...private.ExternalEmptyMutator) (*extemptypb.Empty, *extemptypb.Empty, error) {
+	// Set mutators for all deprecated fields
+	inNext := s.ToNextExternalEmpty(in)
+	outNext, outPriv, err := s.Next.PingImpl(ctx, inNext, mutators...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	out, err := s.ToPublicExternalEmpty(outNext, outPriv)
 	if err != nil {
 		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}

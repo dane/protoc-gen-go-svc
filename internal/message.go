@@ -16,6 +16,7 @@ type Message struct {
 	IsExternal       bool
 	IsOneOf          bool
 	IsConverterEmpty bool
+	IsMatch          bool
 	Name             string
 	ImportPath       string
 	PackageName      string
@@ -25,6 +26,50 @@ type Message struct {
 	Parent           *Message
 	Fields           []*Field
 	FieldByName      map[string]*Field
+}
+
+func (m *Message) Type() string {
+	if m.IsExternal {
+		return fmt.Sprintf("%s.%s", m.PackageName, m.Name)
+	}
+
+	if m.IsPrivate {
+		return fmt.Sprintf("privatepb.%s", m.Name)
+	}
+
+	return fmt.Sprintf("publicpb.%s", m.Name)
+}
+
+func (m *Message) NextType() string {
+	if m.Next == nil {
+		return ""
+	}
+
+	if m.Next.IsExternal {
+		return fmt.Sprintf("%s.%s", m.Next.PackageName, m.Next.Name)
+	}
+
+	return fmt.Sprintf("nextpb.%s", m.Next.Name)
+}
+
+func (m *Message) PrivateType() string {
+	if m.Private == nil {
+		return ""
+	}
+
+	if m.Private.IsExternal {
+		return fmt.Sprintf("%s.%s", m.Private.PackageName, m.Private.Name)
+	}
+
+	return fmt.Sprintf("privatepb.%s", m.Private.Name)
+}
+
+func (m *Message) Ref() string {
+	if m.IsExternal {
+		return fmt.Sprintf("External%s", m.Name)
+	}
+
+	return m.Name
 }
 
 // NewMessage creates a `Message`. An error will be returned if the message
@@ -73,6 +118,8 @@ func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, erro
 			return nil, NewErrMessageNotFound(messageName, svc.Private)
 		}
 
+		msg.IsMatch = isMessageMatch(msg, msg.Private)
+
 		return msg, nil
 	}
 
@@ -87,6 +134,7 @@ func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, erro
 		return nil, NewErrMessageNotFound(messageName, svc.Next)
 	}
 
+	msg.IsMatch = isMessageMatch(msg, msg.Next)
 	msg.Private = msg.Next.Private
 
 	return msg, nil
@@ -95,9 +143,11 @@ func NewMessage(svc *Service, message, parent *protogen.Message) (*Message, erro
 // NewExternalMessage creates a `Message` for protobuf messages that are
 // external to the public and private services. These are placeholder structures
 // to make building validators and converters easier.
-func NewExternalMessage(message *protogen.Message) *Message {
+func NewExternalMessage(svc *Service, message *protogen.Message) (*Message, error) {
 	msg := &Message{
 		IsExternal: true,
+		IsLatest:   svc.IsLatest,
+		IsPrivate:  svc.IsPrivate,
 		ImportPath: string(message.GoIdent.GoImportPath),
 		Name:       message.GoIdent.GoName,
 	}
@@ -105,5 +155,43 @@ func NewExternalMessage(message *protogen.Message) *Message {
 	importPath := strings.Split(msg.ImportPath, "/")
 	msg.PackageName = fmt.Sprintf("ext%s", importPath[len(importPath)-1])
 
-	return msg
+	if msg.IsPrivate {
+		return msg, nil
+	}
+
+	// Messages of the latest service or deprecated messages read/write directly
+	// to the private service.
+	messageName := messageKey(message)
+	var ok bool
+
+	if msg.IsLatest {
+		msg.Private, ok = svc.Private.MessageByName[messageName]
+		if !ok {
+			return nil, NewErrMessageNotFound(messageName, svc.Private)
+		}
+
+		msg.IsMatch = isMessageMatch(msg, msg.Private)
+
+		return msg, nil
+	}
+
+	// All other messages will chain to a message in the next service version.
+	msg.Next, ok = svc.Next.MessageByName[messageName]
+	if !ok {
+		return nil, NewErrMessageNotFound(messageName, svc.Next)
+	}
+
+	msg.IsMatch = isMessageMatch(msg, msg.Next)
+	msg.Private = msg.Next.Private
+
+	return msg, nil
+}
+
+func isMessageMatch(a, b *Message) bool {
+	// Messages must be in the same package and have the same name to match.
+	if a.ImportPath != b.ImportPath {
+		return false
+	}
+
+	return a.Name == b.Name
 }

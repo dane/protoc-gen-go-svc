@@ -7,6 +7,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -24,6 +25,7 @@ type PeopleClient interface {
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 	Batch(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error)
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type peopleClient struct {
@@ -88,6 +90,15 @@ func (c *peopleClient) Batch(ctx context.Context, in *BatchRequest, opts ...grpc
 	return out, nil
 }
 
+func (c *peopleClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/example.private.People/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PeopleServer is the server API for People service.
 // All implementations must embed UnimplementedPeopleServer
 // for forward compatibility
@@ -98,6 +109,7 @@ type PeopleServer interface {
 	List(context.Context, *ListRequest) (*ListResponse, error)
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	Batch(context.Context, *BatchRequest) (*BatchResponse, error)
+	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedPeopleServer()
 }
 
@@ -122,6 +134,9 @@ func (UnimplementedPeopleServer) Update(context.Context, *UpdateRequest) (*Updat
 }
 func (UnimplementedPeopleServer) Batch(context.Context, *BatchRequest) (*BatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Batch not implemented")
+}
+func (UnimplementedPeopleServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
 func (UnimplementedPeopleServer) mustEmbedUnimplementedPeopleServer() {}
 
@@ -244,6 +259,24 @@ func _People_Batch_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _People_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PeopleServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/example.private.People/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeopleServer).Ping(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // People_ServiceDesc is the grpc.ServiceDesc for People service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -274,6 +307,10 @@ var People_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Batch",
 			Handler:    _People_Batch_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _People_Ping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

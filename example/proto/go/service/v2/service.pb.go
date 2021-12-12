@@ -11,6 +11,7 @@ import (
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	extemptypb "google.golang.org/protobuf/types/known/emptypb"
 	exttimestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
@@ -51,48 +52,70 @@ type Converter interface {
 	ToPublicPerson(*privatepb.Person) (*publicpb.Person, error)
 	ToDeprecatedPublicPerson(*privatepb.Person) (*publicpb.Person, error)
 	ToPrivatePerson(*publicpb.Person) *privatepb.Person
+
 	ToPublicHobby(*privatepb.Hobby) (*publicpb.Hobby, error)
 	ToDeprecatedPublicHobby(*privatepb.Hobby) (*publicpb.Hobby, error)
 	ToPrivateHobby(*publicpb.Hobby) *privatepb.Hobby
+
 	ToPublicCoding(*privatepb.Coding) (*publicpb.Coding, error)
 	ToDeprecatedPublicCoding(*privatepb.Coding) (*publicpb.Coding, error)
 	ToPrivateCoding(*publicpb.Coding) *privatepb.Coding
+
 	ToPublicReading(*privatepb.Reading) (*publicpb.Reading, error)
 	ToDeprecatedPublicReading(*privatepb.Reading) (*publicpb.Reading, error)
 	ToPrivateReading(*publicpb.Reading) *privatepb.Reading
+
 	ToPublicCycling(*privatepb.Cycling) (*publicpb.Cycling, error)
 	ToDeprecatedPublicCycling(*privatepb.Cycling) (*publicpb.Cycling, error)
 	ToPrivateCycling(*publicpb.Cycling) *privatepb.Cycling
+
 	ToPublicCreateRequest(*privatepb.CreateRequest) (*publicpb.CreateRequest, error)
 	ToDeprecatedPublicCreateRequest(*privatepb.CreateRequest) (*publicpb.CreateRequest, error)
 	ToPrivateCreateRequest(*publicpb.CreateRequest) *privatepb.CreateRequest
+
 	ToPublicCreateResponse(*privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToDeprecatedPublicCreateResponse(*privatepb.CreateResponse) (*publicpb.CreateResponse, error)
 	ToPrivateCreateResponse(*publicpb.CreateResponse) *privatepb.CreateResponse
+
 	ToPublicGetRequest(*privatepb.FetchRequest) (*publicpb.GetRequest, error)
 	ToDeprecatedPublicGetRequest(*privatepb.FetchRequest) (*publicpb.GetRequest, error)
 	ToPrivateFetchRequest(*publicpb.GetRequest) *privatepb.FetchRequest
+
 	ToPublicGetResponse(*privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToDeprecatedPublicGetResponse(*privatepb.FetchResponse) (*publicpb.GetResponse, error)
 	ToPrivateFetchResponse(*publicpb.GetResponse) *privatepb.FetchResponse
+
 	ToPublicDeleteRequest(*privatepb.DeleteRequest) (*publicpb.DeleteRequest, error)
 	ToDeprecatedPublicDeleteRequest(*privatepb.DeleteRequest) (*publicpb.DeleteRequest, error)
 	ToPrivateDeleteRequest(*publicpb.DeleteRequest) *privatepb.DeleteRequest
+
 	ToPublicDeleteResponse(*privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
 	ToDeprecatedPublicDeleteResponse(*privatepb.DeleteResponse) (*publicpb.DeleteResponse, error)
 	ToPrivateDeleteResponse(*publicpb.DeleteResponse) *privatepb.DeleteResponse
+
 	ToPublicUpdateRequest(*privatepb.UpdateRequest) (*publicpb.UpdateRequest, error)
 	ToDeprecatedPublicUpdateRequest(*privatepb.UpdateRequest) (*publicpb.UpdateRequest, error)
 	ToPrivateUpdateRequest(*publicpb.UpdateRequest) *privatepb.UpdateRequest
+
 	ToPublicUpdateResponse(*privatepb.UpdateResponse) (*publicpb.UpdateResponse, error)
 	ToDeprecatedPublicUpdateResponse(*privatepb.UpdateResponse) (*publicpb.UpdateResponse, error)
 	ToPrivateUpdateResponse(*publicpb.UpdateResponse) *privatepb.UpdateResponse
+
 	ToPublicBatchRequest(*privatepb.BatchRequest) (*publicpb.BatchRequest, error)
 	ToDeprecatedPublicBatchRequest(*privatepb.BatchRequest) (*publicpb.BatchRequest, error)
 	ToPrivateBatchRequest(*publicpb.BatchRequest) *privatepb.BatchRequest
+
 	ToPublicBatchResponse(*privatepb.BatchResponse) (*publicpb.BatchResponse, error)
 	ToDeprecatedPublicBatchResponse(*privatepb.BatchResponse) (*publicpb.BatchResponse, error)
 	ToPrivateBatchResponse(*publicpb.BatchResponse) *privatepb.BatchResponse
+
+	ToPublicExternalTimestamp(*exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error)
+	ToDeprecatedPublicExternalTimestamp(*exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error)
+	ToPrivateExternalTimestamp(*exttimestamppb.Timestamp) *exttimestamppb.Timestamp
+
+	ToPublicExternalEmpty(*extemptypb.Empty) (*extemptypb.Empty, error)
+	ToDeprecatedPublicExternalEmpty(*extemptypb.Empty) (*extemptypb.Empty, error)
+	ToPrivateExternalEmpty(*extemptypb.Empty) *extemptypb.Empty
 }
 
 type converter struct{}
@@ -982,6 +1005,30 @@ func (c converter) ToPrivateBatchResponse(in *publicpb.BatchResponse) *privatepb
 	return &out
 }
 
+func (c converter) ToPublicExternalTimestamp(priv *exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error) {
+	return priv, nil
+}
+
+func (c converter) ToDeprecatedPublicExternalTimestamp(priv *exttimestamppb.Timestamp) (*exttimestamppb.Timestamp, error) {
+	return priv, nil
+}
+
+func (c converter) ToPrivateExternalTimestamp(in *exttimestamppb.Timestamp) *exttimestamppb.Timestamp {
+	return in
+}
+
+func (c converter) ToPublicExternalEmpty(priv *extemptypb.Empty) (*extemptypb.Empty, error) {
+	return priv, nil
+}
+
+func (c converter) ToDeprecatedPublicExternalEmpty(priv *extemptypb.Empty) (*extemptypb.Empty, error) {
+	return priv, nil
+}
+
+func (c converter) ToPrivateExternalEmpty(in *extemptypb.Empty) *extemptypb.Empty {
+	return in
+}
+
 func NewValidator() Validator {
 	return validator{}
 }
@@ -1020,6 +1067,8 @@ type Validator interface {
 	ByBatchResponse(interface{}) error
 	ValidateExternalTimestamp(*exttimestamppb.Timestamp) error
 	ByExternalTimestamp(interface{}) error
+	ValidateExternalEmpty(*extemptypb.Empty) error
+	ByExternalEmpty(interface{}) error
 }
 
 type validator struct{}
@@ -1346,6 +1395,21 @@ func (v validator) ByExternalTimestamp(value interface{}) error {
 
 	return v.ValidateExternalTimestamp(in)
 }
+func (v validator) ValidateExternalEmpty(in *extemptypb.Empty) error {
+	return nil
+}
+
+func (v validator) ByExternalEmpty(value interface{}) error {
+	var in *extemptypb.Empty
+	if v, ok := value.(*extemptypb.Empty); ok {
+		in = v
+	} else {
+		v := value.(extemptypb.Empty)
+		in = &v
+	}
+
+	return v.ValidateExternalEmpty(in)
+}
 
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
 	if err := s.ValidateCreateRequest(in); err != nil {
@@ -1353,6 +1417,46 @@ func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publ
 	}
 
 	out, _, err := s.CreateImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
+	if err := s.ValidateGetRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.GetImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
+	if err := s.ValidateDeleteRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.DeleteImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Update(ctx context.Context, in *publicpb.UpdateRequest) (*publicpb.UpdateResponse, error) {
+	if err := s.ValidateUpdateRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.UpdateImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Batch(ctx context.Context, in *publicpb.BatchRequest) (*publicpb.BatchResponse, error) {
+	if err := s.ValidateBatchRequest(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.BatchImpl(ctx, in)
+	return out, err
+}
+func (s *Service) Ping(ctx context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
+	if err := s.ValidateExternalEmpty(in); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	out, _, err := s.PingImpl(ctx, in)
 	return out, err
 }
 
@@ -1374,15 +1478,6 @@ func (s *Service) CreateImpl(ctx context.Context, in *publicpb.CreateRequest, mu
 	}
 	return out, outPriv, nil
 }
-func (s *Service) Get(ctx context.Context, in *publicpb.GetRequest) (*publicpb.GetResponse, error) {
-	if err := s.ValidateGetRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.GetImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators ...private.FetchRequestMutator) (*publicpb.GetResponse, *privatepb.FetchResponse, error) {
 	// Set mutators for all deprecated fields
 	inPriv := s.ToPrivateFetchRequest(in)
@@ -1401,15 +1496,6 @@ func (s *Service) GetImpl(ctx context.Context, in *publicpb.GetRequest, mutators
 	}
 	return out, outPriv, nil
 }
-func (s *Service) Delete(ctx context.Context, in *publicpb.DeleteRequest) (*publicpb.DeleteResponse, error) {
-	if err := s.ValidateDeleteRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.DeleteImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mutators ...private.DeleteRequestMutator) (*publicpb.DeleteResponse, *privatepb.DeleteResponse, error) {
 	// Set mutators for all deprecated fields
 	inPriv := s.ToPrivateDeleteRequest(in)
@@ -1428,15 +1514,6 @@ func (s *Service) DeleteImpl(ctx context.Context, in *publicpb.DeleteRequest, mu
 	}
 	return out, outPriv, nil
 }
-func (s *Service) Update(ctx context.Context, in *publicpb.UpdateRequest) (*publicpb.UpdateResponse, error) {
-	if err := s.ValidateUpdateRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.UpdateImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mutators ...private.UpdateRequestMutator) (*publicpb.UpdateResponse, *privatepb.UpdateResponse, error) {
 	// Set mutators for all deprecated fields
 	inPriv := s.ToPrivateUpdateRequest(in)
@@ -1455,15 +1532,6 @@ func (s *Service) UpdateImpl(ctx context.Context, in *publicpb.UpdateRequest, mu
 	}
 	return out, outPriv, nil
 }
-func (s *Service) Batch(ctx context.Context, in *publicpb.BatchRequest) (*publicpb.BatchResponse, error) {
-	if err := s.ValidateBatchRequest(in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	out, _, err := s.BatchImpl(ctx, in)
-	return out, err
-}
-
 func (s *Service) BatchImpl(ctx context.Context, in *publicpb.BatchRequest, mutators ...private.BatchRequestMutator) (*publicpb.BatchResponse, *privatepb.BatchResponse, error) {
 	// Set mutators for all deprecated fields
 	inPriv := s.ToPrivateBatchRequest(in)
@@ -1477,6 +1545,24 @@ func (s *Service) BatchImpl(ctx context.Context, in *publicpb.BatchRequest, muta
 	}
 
 	out, err := s.ToPublicBatchResponse(outPriv)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+	}
+	return out, outPriv, nil
+}
+func (s *Service) PingImpl(ctx context.Context, in *extemptypb.Empty, mutators ...private.ExternalEmptyMutator) (*extemptypb.Empty, *extemptypb.Empty, error) {
+	// Set mutators for all deprecated fields
+	inPriv := s.ToPrivateExternalEmpty(in)
+	for _, mutator := range mutators {
+		mutator(inPriv)
+	}
+
+	outPriv, err := s.Private.Ping(ctx, inPriv)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	out, err := s.ToPublicExternalEmpty(outPriv)
 	if err != nil {
 		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
