@@ -82,7 +82,10 @@ func NewService(
 	for _, method := range service.Methods {
 		if isExternalMessage(svc, method.Input) {
 			if _, ok := svc.MessageByName[messageKey(method.Input)]; !ok {
-				ext := NewExternalMessage(method.Input)
+				ext, err := NewExternalMessage(svc, method.Input)
+				if err != nil {
+					return nil, err
+				}
 				svc.MessageByName[messageKey(method.Input)] = ext
 				svc.Messages = append(svc.Messages, ext)
 			}
@@ -90,7 +93,10 @@ func NewService(
 
 		if isExternalMessage(svc, method.Output) {
 			if _, ok := svc.MessageByName[messageKey(method.Output)]; !ok {
-				ext := NewExternalMessage(method.Output)
+				ext, err := NewExternalMessage(svc, method.Output)
+				if err != nil {
+					return nil, err
+				}
 				svc.MessageByName[messageKey(method.Output)] = ext
 				svc.Messages = append(svc.Messages, ext)
 			}
@@ -135,7 +141,10 @@ func buildMessageFields(svc *Service, messages []*protogen.Message) error {
 			// validations and converters.
 			if isExternalFieldMessage(svc, field) {
 				if _, ok := svc.MessageByName[messageKey(field.Message)]; !ok {
-					ext := NewExternalMessage(field.Message)
+					ext, err := NewExternalMessage(svc, field.Message)
+					if err != nil {
+						return err
+					}
 					svc.MessageByName[messageKey(field.Message)] = ext
 					svc.Messages = append(svc.Messages, ext)
 				}
