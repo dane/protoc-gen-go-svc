@@ -6,17 +6,17 @@ func NewConverter() Converter {
 type Converter interface {
 	Name() string
 	{{ range . -}}
-		{{ if not .IsExternal -}}
-			{{ if .IsLatest -}}
-				ToPublic{{ .Name }}(*privatepb.{{ .Private.Name }}) (*publicpb.{{ .Name }}, error)
-			{{ else if not .IsDeprecated -}}
-				ToPublic{{ .Name }}(*nextpb.{{ .Next.Name }}, *privatepb.{{ .Private.Name }}) (*publicpb.{{ .Name }}, error)
-			{{ end -}}
-			ToDeprecatedPublic{{ .Name }}(*privatepb.{{ .Private.Name }}) (*publicpb.{{ .Name }}, error)
-			ToPrivate{{ .Private.Name }}(*publicpb.{{ .Name }}) *privatepb.{{ .Private.Name }}
-			{{ if and (not .IsLatest) (not .IsDeprecated) -}}
-				ToNext{{ .Next.Name }}(*publicpb.{{ .Name }}) *nextpb.{{ .Next.Name }}
-			{{ end -}}
+		{{ if .IsLatest -}}
+			ToPublic{{ .Ref }}(*{{ .PrivateType }}) (*{{ .Type }}, error)
+		{{ else if not .IsDeprecated -}}
+			ToPublic{{ .Ref }}(*{{ .NextType }}, *{{ .PrivateType }}) (*{{ .Type }}, error)
+		{{ end -}}
+
+		ToDeprecatedPublic{{ .Ref }}(*{{ .PrivateType }}) (*{{ .Type }}, error)
+		ToPrivate{{ .Private.Ref }}(*{{ .Type }}) *{{ .PrivateType }}
+
+		{{ if and (not .IsLatest) (not .IsDeprecated) -}}
+			ToNext{{ .Next.Ref }}(*{{ .Type }}) *{{ .NextType }}
 		{{ end -}}
 	{{ end -}}
 }
@@ -28,243 +28,252 @@ func (c converter) Name() string {
 }
 
 {{ range $message := . -}}
-	{{ if not .IsExternal -}}
-		{{ if .IsLatest -}}
-			{{ public_from_private_config . | partial }}
-		{{ else if not .IsDeprecated -}}
-			func (c converter) ToPublic{{ .Name }}(in *nextpb.{{ .Next.Name }}, priv *privatepb.{{ .Private.Name }}) (*publicpb.{{ .Name }}, error) {
-				{{ if .IsConverterEmpty -}}
+	{{ if .IsLatest -}}
+		{{ public_from_private_config . | partial }}
+	{{ else if not .IsDeprecated -}}
+		func (c converter) ToPublic{{ .Ref }}(in *{{ .NextType }}, priv *{{ .PrivateType }}) (*{{ .Type }}, error) {
+			{{ if or .IsConverterEmpty -}}
+				return nil, nil
+			{{ else if .IsMatch -}}
+				return in, nil
+			{{ else -}}
+				if in == nil {
 					return nil, nil
-				{{ else -}}
-					if in == nil {
-						return nil, nil
-					}
+				}
 
-					required := make(validation.Errors)
-					{{ range .Fields -}}
-						{{ if .IsRequired -}}
-							{{ if or .IsDeprecated -}}
-								required["{{ .Name }}"] = validation.Validate(priv.Get{{ .Private.Name }}(), validation.Required)
-							{{ else -}}
-								required["{{ .Name }}"] = validation.Validate(in.Get{{ .Next.Name }}(), validation.Required)
-							{{ end -}}
+				required := make(validation.Errors)
+				{{ range .Fields -}}
+					{{ if .IsRequired -}}
+						{{ if or .IsDeprecated -}}
+							required["{{ .Name }}"] = validation.Validate(priv.Get{{ .Private.Name }}(), validation.Required)
+						{{ else -}}
+							required["{{ .Name }}"] = validation.Validate(in.Get{{ .Next.Name }}(), validation.Required)
 						{{ end -}}
 					{{ end -}}
-
-					if err := required.Filter(); err != nil {
-						return nil, err
-					}
-
-					var out publicpb.{{ .Name }}
-					var err error
-
-					{{ range .Fields -}}
-						{{ $outFieldName := .Name -}}
-						{{ if .IsMatch -}}
-							{{ if .IsDeprecated -}}
-								out.{{ .Name }} = priv.{{ .Private.Name }}
-							{{ else -}}
-								out.{{ .Name }} = in.{{ .Next.Name }}
-							{{ end -}}
-						{{ else if .IsEnum -}}
-							{{ if .IsDeprecated -}}
-								switch priv.{{ .Private.Name }} {
-								{{ $fieldName := .Name -}}
-								{{ range .EnumValues -}}
-									{{ $enumValueName := .Name -}}
-									{{ range .Receive -}}
-										case privatepb.{{ .Name }}:
-										out.{{ $fieldName }} = publicpb.{{ $enumValueName }}
-									{{ end -}}
-								{{ end -}}
-								default:
-									return nil, errors.New(`failed to populate field "{{ .Name }}"`)
-								}
-							{{ else -}}
-								switch in.{{ .Next.Name }} {
-								{{ $fieldName := .Name -}}
-								{{ range .EnumValues -}}
-									{{ $enumValueName := .Name -}}
-									{{ range .Receive -}}
-										case nextpb.{{ .Name }}:
-										out.{{ $fieldName }} = publicpb.{{ $enumValueName }}
-									{{ end -}}
-								{{ end -}}
-								default:
-									return nil, errors.New(`failed to populate field "{{ .Name }}"`)
-								}
-							{{ end -}}
-						{{ else if .IsOneOf -}}
-							{{ $field := . }}
-							{{ if .IsDeprecated -}}
-								switch priv.{{ .Private.Name }}.(type) {
-								{{ range .Messages -}}
-									case *privatepb.{{ $message.Private.Name }}_{{ .Private.Name }}:
-										value, err := c.ToDeprecatedPublic{{ .Name }}(priv.Get{{ .Private.Name }}())
-										if err != nil {
-											return nil, err
-										}
-										out.{{ $field.Name }} = &publicpb.{{ $message.Name }}_{{ .Name }}{
-											{{ .Name }}: value,
-										}
-								{{ end -}}
-								}
-							{{ else -}}
-								switch in.{{ .Next.Name }}.(type) {
-								{{ range .Messages -}}
-									case *nextpb.{{ $message.Next.Name }}_{{ .Next.Name }}:
-										value, err := c.ToPublic{{ .Name }}(in.Get{{ .Next.Name }}(), priv.Get{{ .Private.Name }}())
-										if err != nil {
-											return nil, err
-										}
-										out.{{ $field.Name }} = &publicpb.{{ $message.Name }}_{{ .Name }}{
-											{{ .Name }}: value,
-										}
-								{{ end -}}
-								}
-							{{ end -}}
-						{{ else if .IsMessage -}}
-							{{ if .IsRepeated -}}
-								{{ if .IsDeprecated -}}
-									for _, item := priv.{{ .Private.Name }} {
-										conv, err := c.ToDeprecatedPublic{{ .Message.Name }}(priv.{{ .Private.Name }})
-										if err != nil {
-											return nil, err
-										}
-										out.{{ .Name }} = append(out.{{ .Name }}, conv)
-									}
-								{{ else -}}
-									for i, item := in.{{ .Next.Name }} {
-										conv, err := c.ToPublic{{ .Message.Name }}(item, priv.{{ .Private.Name }}[i])
-										if err != nil {
-											return nil, err
-										}
-										out.{{ .Name }} = append(out.{{ .Name }}, conv)
-									}
-								{{ end -}}
-							{{ else -}}
-								{{ if .IsDeprecated -}}
-									out.{{ .Name }}, err = c.ToDeprecatedPublic{{ .Message.Name }}(priv.{{ .Private.Name }})
-								{{ else -}}
-									out.{{ .Name }}, err = c.ToPublic{{ .Message.Name }}(in.{{ .Next.Name }}, priv.{{ .Private.Name }})
-								{{ end -}}
-								if err != nil {
-									return nil, err
-								}
-							{{ end -}}
-						{{ end -}}
-					{{ end -}}
-
-					return &out, err
 				{{ end -}}
-			}
-		{{ end -}}
 
-		{{ deprecated_public_from_private_config . | partial }}
+				if err := required.Filter(); err != nil {
+					return nil, err
+				}
 
-		func (c converter) ToPrivate{{ .Private.Name }}(in *publicpb.{{ .Name }}) *privatepb.{{ .Private.Name }} {
-			{{ if .IsConverterEmpty -}}
+				var out {{ .Type }}
+				var err error
+
+				{{ range .Fields -}}
+					{{ $outFieldName := .Name -}}
+					{{ if .IsMatch -}}
+						{{ if .IsDeprecated -}}
+							out.{{ .Name }} = priv.{{ .Private.Name }}
+						{{ else -}}
+							out.{{ .Name }} = in.{{ .Next.Name }}
+						{{ end -}}
+					{{ else if .IsEnum -}}
+						{{ if .IsDeprecated -}}
+							switch priv.{{ .Private.Name }} {
+							{{ $fieldName := .Name -}}
+							{{ range .EnumValues -}}
+								{{ $enumValueName := .Name -}}
+								{{ range .Receive -}}
+									case {{ .PrivateType }}:
+									out.{{ $fieldName }} = publicpb.{{ $enumValueName }}
+								{{ end -}}
+							{{ end -}}
+							default:
+								return nil, errors.New(`failed to populate field "{{ .Name }}"`)
+							}
+						{{ else -}}
+							switch in.{{ .Next.Name }} {
+							{{ $fieldName := .Name -}}
+							{{ range .EnumValues -}}
+								{{ $enumValueName := .Name -}}
+								{{ range .Receive -}}
+									case nextpb.{{ .Name }}:
+									out.{{ $fieldName }} = publicpb.{{ $enumValueName }}
+								{{ end -}}
+							{{ end -}}
+							default:
+								return nil, errors.New(`failed to populate field "{{ .Name }}"`)
+							}
+						{{ end -}}
+					{{ else if .IsOneOf -}}
+						{{ $field := . }}
+						{{ if .IsDeprecated -}}
+							switch priv.{{ .Private.Name }}.(type) {
+							{{ range .Messages -}}
+								case *{{ $message.PrivateType }}_{{ .Private.Name }}:
+									value, err := c.ToDeprecatedPublic{{ .Ref }}(priv.Get{{ .Private.Name }}())
+									if err != nil {
+										return nil, err
+									}
+									out.{{ $field.Name }} = &{{ $message.Ref }}_{{ .Name }}{
+										{{ .Name }}: value,
+									}
+							{{ end -}}
+							}
+						{{ else -}}
+							switch in.{{ .Next.Name }}.(type) {
+							{{ range .Messages -}}
+								case *{{ $message.NextType }}_{{ .Next.Name }}:
+									value, err := c.ToPublic{{ .Ref }}(in.Get{{ .Next.Name }}(), priv.Get{{ .Private.Name }}())
+									if err != nil {
+										return nil, err
+									}
+									out.{{ $field.Name }} = &{{ $message.Type }}_{{ .Name }}{
+										{{ .Name }}: value,
+									}
+							{{ end -}}
+							}
+						{{ end -}}
+					{{ else if .IsMessage -}}
+						{{ if .IsRepeated -}}
+							{{ if .IsDeprecated -}}
+								for _, item := priv.{{ .Private.Name }} {
+									conv, err := c.ToDeprecatedPublic{{ .Message.Ref }}(priv.{{ .Private.Name }})
+									if err != nil {
+										return nil, err
+									}
+									out.{{ .Name }} = append(out.{{ .Name }}, conv)
+								}
+							{{ else -}}
+								for i, item := in.{{ .Next.Name }} {
+									conv, err := c.ToPublic{{ .Message.Ref }}(item, priv.{{ .Private.Name }}[i])
+									if err != nil {
+										return nil, err
+									}
+									out.{{ .Name }} = append(out.{{ .Name }}, conv)
+								}
+							{{ end -}}
+						{{ else -}}
+							{{ if .IsDeprecated -}}
+								out.{{ .Name }}, err = c.ToDeprecatedPublic{{ .Message.Ref }}(priv.{{ .Private.Name }})
+							{{ else -}}
+								out.{{ .Name }}, err = c.ToPublic{{ .Message.Ref }}(in.{{ .Next.Name }}, priv.{{ .Private.Name }})
+							{{ end -}}
+							if err != nil {
+								return nil, err
+							}
+						{{ end -}}
+					{{ end -}}
+				{{ end -}}
+
+				return &out, err
+			{{ end -}}
+		}
+	{{ end -}}
+
+	{{ deprecated_public_from_private_config . | partial }}
+
+	func (c converter) ToPrivate{{ .Private.Ref }}(in *{{ .Type }}) *{{ .Private.Type }} {
+		{{ if or .IsConverterEmpty -}}
+			return nil
+		{{ else if .IsMatch -}}
+			return in
+		{{ else -}}
+			if in == nil {
 				return nil
+			}
+
+			var out {{ .PrivateType }}
+			{{ range $field := .Fields -}}
+				{{ if .IsMatch -}}
+					out.{{ .Private.Name }} = in.{{ .Name }}
+				{{ else if .IsEnum -}}
+					switch in.{{ .Name }} {
+					{{ range .EnumValues -}}
+						case {{ .Type }}:
+							out.{{ $field.Private.Name }} = privatepb.{{ .Private.Name }}
+					{{ end -}}
+					}
+				{{ else if .IsOneOf -}}
+					{{ $field := . -}}
+					switch in.{{ .Name }}.(type) {
+					{{ range .Messages -}}
+						case *{{ $message.Type }}_{{ .Name }}:
+							out.{{ $field.Private.Name }} = &{{ $message.PrivateType }}_{{ .Private.Name }}{
+								{{ .Private.Name }}: c.ToPrivate{{ .Private.Ref }}(in.Get{{ .Name }}()),
+							}
+					{{ end -}}
+					}
+				{{ else if .IsMessage -}}
+					{{ if .IsRepeated -}}
+						for _, item := range in.{{ .Name }} {
+							conv := c.ToPrivate{{ .Private.Message.Ref }}(item)
+							out.{{ .Private.Name }} = append(out.{{ .Private.Name }}, conv)
+						}
+					{{ else -}}
+						out.{{ .Private.Name }} = c.ToPrivate{{ .Private.Message.Ref }}(in.{{ .Name }})
+					{{ end -}}
+				{{ end -}}
+			{{ end -}}
+
+			return &out
+		{{ end -}}
+	}
+
+	{{ if and (not .IsLatest) (not .IsDeprecated) -}}
+		func(c converter) ToNext{{ .Next.Ref }}(in *{{ .Type }}) *{{ .NextType }} {
+			{{ if or .IsConverterEmpty -}}
+				return nil
+			{{ else if .IsMatch -}}
+				return in
 			{{ else -}}
 				if in == nil {
 					return nil
 				}
 
-				var out privatepb.{{ .Private.Name }}
+				var out {{ .NextType }}
+
 				{{ range $field := .Fields -}}
-					{{ if .IsMatch -}}
-						out.{{ .Private.Name }} = in.{{ .Name }}
-					{{ else if .IsEnum -}}
-						switch in.{{ .Name }} {
-						{{ range .EnumValues -}}
-							case publicpb.{{ .Name }}:
-								out.{{ $field.Private.Name }} = privatepb.{{ .Private.Name }}
-						{{ end -}}
-						}
-					{{ else if .IsOneOf -}}
-						{{ $field := . -}}
-						switch in.{{ .Name }}.(type) {
-						{{ range .Messages -}}
-							case *publicpb.{{ $message.Name }}_{{ .Name }}:
-								out.{{ $field.Private.Name }} = &privatepb.{{ $message.Private.Name }}_{{ .Private.Name }}{
-									{{ .Private.Name }}: c.ToPrivate{{ .Private.Name }}(in.Get{{ .Name }}()),
-								}
-						{{ end -}}
-						}
-					{{ else if .IsMessage -}}
-						{{ if .IsRepeated -}}
-							for _, item := range in.{{ .Name }} {
-								conv := c.ToPrivate{{ .Private.Message.Name }}(item)
-								out.{{ .Private.Name }} = append(out.{{ .Private.Name }}, conv)
+					{{ if not .IsDeprecated -}}
+						{{ if .IsMatch -}}
+							out.{{ .Next.Name }} = in.{{ .Name }}
+						{{ else if .IsEnum -}}
+							switch in.{{ .Name }} {
+							{{ range .EnumValues -}}
+								case {{ .Type }}:
+									out.{{ $field.Name }} = {{ .NextType }}
+							{{ end -}}
 							}
-						{{ else -}}
-							out.{{ .Private.Name }} = c.ToPrivate{{ .Private.Message.Name }}(in.{{ .Name }})
-						{{ end -}}
-					{{ end -}}
-				{{ end -}}
-
-				return &out
-			{{ end -}}
-		}
-		
-		{{ if and (not .IsLatest) (not .IsDeprecated) -}}
-			func(c converter) ToNext{{ .Next.Name }}(in *publicpb.{{ .Name }}) *nextpb.{{ .Next.Name }} {
-				{{ if .IsConverterEmpty -}}
-					return nil
-				{{ else -}}
-					if in == nil {
-						return nil
-					}
-
-					var out nextpb.{{ .Next.Name }}
-
-					{{ range $field := .Fields -}}
-						{{ if not .IsDeprecated -}}
-							{{ if .IsMatch -}}
-								out.{{ .Next.Name }} = in.{{ .Name }}
-							{{ else if .IsEnum -}}
-								switch in.{{ .Name }} {
-								{{ range .EnumValues -}}
-									case publicpb.{{ .Name }}:
-										out.{{ $field.Name }} = nextpb.{{ .Next.Name }}
-								{{ end -}}
-								}
-							{{ else if .IsOneOf -}}
-								{{ $field := . -}}
-								switch in.{{ .Name }}.(type) {
-								{{ range .Messages -}}
-									case *publicpb.{{ $message.Name }}_{{ .Name }}:
-										out.{{ $field.Next.Name }} = &nextpb.{{ $message.Next.Name }}_{{ .Next.Name }}{
-											{{ .Next.Name }}: c.ToNext{{ .Next.Name }}(in.Get{{ .Name }}()),
-										}
-								{{ end -}}
-								}
-							{{ else if .IsMessage -}}
-								{{ if .IsRepeated -}}
-									for _, item := range in.{{ .Name }} {
-										conv := c.ToNext{{ .Next.Message.Name }}(item)
-										out.{{ .Next.Name }} = append(out.{{ .Next.Name }}, conv)
+						{{ else if .IsOneOf -}}
+							{{ $field := . -}}
+							switch in.{{ .Name }}.(type) {
+							{{ range .Messages -}}
+								case *{{ $message.Type }}_{{ .Name }}:
+									out.{{ $field.Next.Name }} = &{{ $message.NextType }}_{{ .Next.Name }}{
+										{{ .Next.Name }}: c.ToNext{{ .Next.Ref }}(in.Get{{ .Name }}()),
 									}
-								{{ else -}}
-									out.{{ .Next.Name }} = c.ToNext{{ .Next.Message.Name }}(in.{{ .Name }})
-								{{ end -}}
+							{{ end -}}
+							}
+						{{ else if .IsMessage -}}
+							{{ if .IsRepeated -}}
+								for _, item := range in.{{ .Name }} {
+									conv := c.ToNext{{ .Next.Message.Ref }}(item)
+									out.{{ .Next.Name }} = append(out.{{ .Next.Name }}, conv)
+								}
+							{{ else -}}
+								out.{{ .Next.Name }} = c.ToNext{{ .Next.Message.Ref }}(in.{{ .Name }})
 							{{ end -}}
 						{{ end -}}
 					{{ end -}}
-					return &out
 				{{ end -}}
-			}
-		{{ end -}}
+				return &out
+			{{ end -}}
+		}
 	{{ end -}}
 {{ end -}}
+
 {{ end -}}{{/* end of converters partial */}}
 
+
 {{ define "to-public-from-private" -}}
-	{{ $prefix := .Prefix }}
-	{{ $message := .Message }}
-	func(c converter) To{{ $prefix }}Public{{ .Name }}(priv *privatepb.{{ .Private.Name }}) (*publicpb.{{ .Name }}, error) {
-		{{ if $message.IsConverterEmpty -}}
+	{{ $prefix := .Prefix -}}
+	{{ $message := .Message -}}
+
+	func(c converter) To{{ $prefix }}Public{{ .Ref }}(priv *{{ .Private.Type }}) (*{{ .Type }}, error) {
+		{{ if or $message.IsConverterEmpty -}}
 			return nil, nil
+		{{ else if $message.IsMatch -}}
+			return priv, nil
 		{{ else -}}
 			if priv == nil {
 				return nil, nil
@@ -281,7 +290,7 @@ func (c converter) Name() string {
 				return nil, err
 			}
 
-			var out publicpb.{{ .Name }}
+			var out {{ .Type }}
 			var err error
 
 			{{ range $field := .Fields -}}
@@ -293,9 +302,9 @@ func (c converter) Name() string {
 						{{ $enumValueName := .Name -}}
 						{{ range .Receive -}}
 							{{ if .IsPrivate -}}
-								case privatepb.{{ .Name }}:
+								case {{ .Type }}:
 							{{ else -}}
-								case privatepb.{{ .Private.Name }}:
+								case {{ .Private.Type }}:
 							{{ end -}}
 							out.{{ $field.Name }} = publicpb.{{ $enumValueName }}
 						{{ end -}}
@@ -306,12 +315,12 @@ func (c converter) Name() string {
 				{{ else if .IsOneOf -}}
 					switch priv.{{ $field.Private.Name }}.(type) {
 					{{ range .Messages -}}
-						case *privatepb.{{ $message.Private.Name }}_{{ .Private.Name }}:
-							value, err := c.To{{ $prefix }}Public{{ .Name }}(priv.Get{{ .Private.Name }}())
+						case *{{ $message.PrivateType }}_{{ .Private.Name }}:
+							value, err := c.To{{ $prefix }}Public{{ .Ref }}(priv.Get{{ .Private.Name }}())
 							if err != nil {
 								return nil, err
 							}
-							out.{{ $field.Name }} = &publicpb.{{ $message.Name }}_{{ .Name }}{
+							out.{{ $field.Name }} = &{{ $message.Type }}_{{ .Name }}{
 								{{ .Name }}: value,
 							}
 					{{ end -}}
@@ -319,14 +328,14 @@ func (c converter) Name() string {
 				{{ else if .IsMessage -}}
 					{{ if .IsRepeated -}}
 						for _, item := range priv.{{ .Private.Name }} {
-							conv, err := c.To{{ $prefix }}Public{{ .Message.Name }}(item)
+							conv, err := c.To{{ $prefix }}Public{{ .Message.Ref }}(item)
 							if err != nil {
 								return nil, err
 							}
 							out.{{ .Name }} = append(out.{{ .Name }}, conv)
 						}
 					{{ else -}}
-						out.{{ .Name }}, err = c.To{{ $prefix }}Public{{ .Message.Name }}(priv.{{ .Private.Name }})
+						out.{{ .Name }}, err = c.To{{ $prefix }}Public{{ .Message.Ref }}(priv.{{ .Private.Name }})
 						if err != nil {
 							return nil, err
 						}
