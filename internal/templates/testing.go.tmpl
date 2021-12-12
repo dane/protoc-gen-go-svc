@@ -38,10 +38,10 @@ type Params struct {
 func New{{ .Name }}ConversionTest(t *testing.T, params Params, options []service.Option) {
 	t.Run(`verify conversions between "{{ $publicPackageName }}" and "{{ $privatePackageName }}"`, func(t *testing.T) {
 		var (
-			publicIn   publicpb.{{ .Input.Name }}
-			publicOut  publicpb.{{ .Output.Name }}
-			privateIn  privatepb.{{ .Input.Private.Name }}
-			privateOut privatepb.{{ .Output.Private.Name }}
+			publicIn   {{ .Input.Type }}
+			publicOut  {{ .Output.Type }}
+			privateIn  {{ .Input.PrivateType }}
+			privateOut {{ .Output.PrivateType }}
 		)
 
 		files := map[string]protoreflect.ProtoMessage{
@@ -64,8 +64,8 @@ func New{{ .Name }}ConversionTest(t *testing.T, params Params, options []service
 
 		ctx := context.Background()
 		s := &server{
-			{{ .Input.Private.Name }}:  &privateIn,
-			{{ .Output.Private.Name }}: &privateOut,
+			{{ .Private.Name }}Input:  &privateIn,
+			{{ .Private.Name }}Output: &privateOut,
 		}
 		addr, cleanup := startServer(t, s, options)
 		defer cleanup()
@@ -85,7 +85,7 @@ func New{{ .Name }}ConversionTest(t *testing.T, params Params, options []service
 			t.Fatal(cmp.Diff(out, &publicOut, ignore()...))
 		}
 
-		if s.notEqual {
+		if s.diff != "" {
 			t.Fatal(s.diff)
 		}
 	})
@@ -112,22 +112,20 @@ func startServer(t *testing.T, ts privatepb.{{ .Name }}Server, options []service
 
 type server struct {
 	privatepb.{{ .Private.Name }}Server
-	notEqual bool
 	diff string
 	{{ range .Methods -}}
-		{{ .Input.Private.Name }} *privatepb.{{ .Input.Private.Name }}
-		{{ .Output.Private.Name }} *privatepb.{{ .Output.Private.Name }}
+		{{ .Private.Name }}Input *{{ .Input.PrivateType }}
+		{{ .Private.Name }}Output *{{ .Output.PrivateType }}
 	{{ end -}}
 }
 
 {{ range .Methods -}}
-func (s *server) {{ .Private.Name }}(_ context.Context, in *privatepb.{{ .Input.Private.Name }}) (*privatepb.{{ .Output.Private.Name }}, error) {
-	if !cmp.Equal(in, s.{{ .Input.Private.Name }}, ignore()...) {
-		s.notEqual = true
-		s.diff = cmp.Diff(in, s.{{ .Input.Private.Name }}, ignore()...)
+func (s *server) {{ .Private.Name }}(_ context.Context, in *{{ .Input.PrivateType }}) (*{{ .Output.PrivateType }}, error) {
+	if !cmp.Equal(in, s.{{ .Private.Name }}Input, ignore()...) {
+		s.diff = cmp.Diff(in, s.{{ .Private.Name }}Input, ignore()...)
 	}
 
-	return s.{{ .Output.Private.Name }}, nil
+	return s.{{ .Private.Name }}Output, nil
 }
 {{ end -}}
 
@@ -137,8 +135,8 @@ func ignore() []cmp.Option {
 		{{ if .IsExternal -}}
 			cmpopts.IgnoreUnexported({{ .PackageName }}.{{ .Name }}{}),
 		{{ else -}}
-			cmpopts.IgnoreUnexported(publicpb.{{ .Name }}{}),
-			cmpopts.IgnoreUnexported(privatepb.{{ .Private.Name }}{}),
+			cmpopts.IgnoreUnexported({{ .Type }}{}),
+			cmpopts.IgnoreUnexported({{ .PrivateType }}{}),
 		{{ end -}}
 	{{ end -}}
 	}
