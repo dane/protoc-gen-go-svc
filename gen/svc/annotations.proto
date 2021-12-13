@@ -50,6 +50,12 @@ message MethodAnnotation {
   // deprecated indicates a method is not present in the next service
   // version. Deprecated methods will call directly to the private service.
   bool deprecated = 2;
+
+  // converter is a map with a boolean field `empty`. Setting `empty` to true
+  // generates the `Converter` methods for the RPC input and output messages,
+  // but with nil return values only. This is intended for cases where either
+  // message is external.
+  Converter converter = 3;
 }
 
 message MessageAnnotation {
