@@ -7,24 +7,26 @@ import (
 )
 
 type Method struct {
-	IsPrivate    bool
-	IsLatest     bool
-	IsDeprecated bool
-	Name         string
-	Private      *Method
-	Next         *Method
-	Input        *Message
-	Output       *Message
+	IsPrivate        bool
+	IsLatest         bool
+	IsDeprecated     bool
+	IsConverterEmpty bool
+	Name             string
+	Private          *Method
+	Next             *Method
+	Input            *Message
+	Output           *Message
 }
 
 // NewMethod creates a `Method`. An error will be returned if the method
 // cannot be created for any reason.
 func NewMethod(svc *Service, method *protogen.Method) (*Method, error) {
 	m := &Method{
-		IsPrivate:    svc.IsPrivate,
-		IsLatest:     svc.IsLatest,
-		IsDeprecated: options.IsDeprecatedMethod(method),
-		Name:         method.GoName,
+		IsPrivate:        svc.IsPrivate,
+		IsLatest:         svc.IsLatest,
+		IsConverterEmpty: options.IsMethodConverterEmpty(method),
+		IsDeprecated:     options.IsDeprecatedMethod(method),
+		Name:             method.GoName,
 	}
 
 	var ok bool
@@ -37,6 +39,9 @@ func NewMethod(svc *Service, method *protogen.Method) (*Method, error) {
 	if !ok {
 		return nil, NewErrMessageNotFound(messageKey(method.Output), svc)
 	}
+
+	m.Input.IsConverterEmpty = m.IsConverterEmpty
+	m.Output.IsConverterEmpty = m.IsConverterEmpty
 
 	// Private methods are the last in the service chain.
 	if m.IsPrivate {
