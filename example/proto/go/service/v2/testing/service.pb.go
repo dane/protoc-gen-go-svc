@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	extemptypb "google.golang.org/protobuf/types/known/emptypb"
 	exttimestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
@@ -306,10 +305,10 @@ func NewBatchConversionTest(t *testing.T, params Params, options []service.Optio
 func NewPingConversionTest(t *testing.T, params Params, options []service.Option) {
 	t.Run(`verify conversions between "v2" and "private"`, func(t *testing.T) {
 		var (
-			publicIn   extemptypb.Empty
-			publicOut  extemptypb.Empty
-			privateIn  extemptypb.Empty
-			privateOut extemptypb.Empty
+			publicIn   publicpb.PingRequest
+			publicOut  publicpb.PingResponse
+			privateIn  privatepb.PingRequest
+			privateOut privatepb.PingResponse
 		)
 
 		files := map[string]protoreflect.ProtoMessage{
@@ -389,8 +388,8 @@ type server struct {
 	UpdateOutput *privatepb.UpdateResponse
 	BatchInput   *privatepb.BatchRequest
 	BatchOutput  *privatepb.BatchResponse
-	PingInput    *extemptypb.Empty
-	PingOutput   *extemptypb.Empty
+	PingInput    *privatepb.PingRequest
+	PingOutput   *privatepb.PingResponse
 }
 
 func (s *server) Create(_ context.Context, in *privatepb.CreateRequest) (*privatepb.CreateResponse, error) {
@@ -428,7 +427,7 @@ func (s *server) Batch(_ context.Context, in *privatepb.BatchRequest) (*privatep
 
 	return s.BatchOutput, nil
 }
-func (s *server) Ping(_ context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
+func (s *server) Ping(_ context.Context, in *privatepb.PingRequest) (*privatepb.PingResponse, error) {
 	if !cmp.Equal(in, s.PingInput, ignore()...) {
 		s.diff = cmp.Diff(in, s.PingInput, ignore()...)
 	}
@@ -467,7 +466,10 @@ func ignore() []cmp.Option {
 		cmpopts.IgnoreUnexported(privatepb.BatchRequest{}),
 		cmpopts.IgnoreUnexported(publicpb.BatchResponse{}),
 		cmpopts.IgnoreUnexported(privatepb.BatchResponse{}),
+		cmpopts.IgnoreUnexported(publicpb.PingRequest{}),
+		cmpopts.IgnoreUnexported(privatepb.PingRequest{}),
+		cmpopts.IgnoreUnexported(publicpb.PingResponse{}),
+		cmpopts.IgnoreUnexported(privatepb.PingResponse{}),
 		cmpopts.IgnoreUnexported(exttimestamppb.Timestamp{}),
-		cmpopts.IgnoreUnexported(extemptypb.Empty{}),
 	}
 }

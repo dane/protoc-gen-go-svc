@@ -253,8 +253,8 @@ func NewPingConversionTest(t *testing.T, params Params, options []service.Option
 		var (
 			publicIn   extemptypb.Empty
 			publicOut  extemptypb.Empty
-			privateIn  extemptypb.Empty
-			privateOut extemptypb.Empty
+			privateIn  privatepb.PingRequest
+			privateOut privatepb.PingResponse
 		)
 
 		files := map[string]protoreflect.ProtoMessage{
@@ -332,8 +332,8 @@ type server struct {
 	DeleteOutput *privatepb.DeleteResponse
 	ListInput    *privatepb.ListRequest
 	ListOutput   *privatepb.ListResponse
-	PingInput    *extemptypb.Empty
-	PingOutput   *extemptypb.Empty
+	PingInput    *privatepb.PingRequest
+	PingOutput   *privatepb.PingResponse
 }
 
 func (s *server) Create(_ context.Context, in *privatepb.CreateRequest) (*privatepb.CreateResponse, error) {
@@ -364,7 +364,7 @@ func (s *server) List(_ context.Context, in *privatepb.ListRequest) (*privatepb.
 
 	return s.ListOutput, nil
 }
-func (s *server) Ping(_ context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
+func (s *server) Ping(_ context.Context, in *privatepb.PingRequest) (*privatepb.PingResponse, error) {
 	if !cmp.Equal(in, s.PingInput, ignore()...) {
 		s.diff = cmp.Diff(in, s.PingInput, ignore()...)
 	}
@@ -400,6 +400,7 @@ func ignore() []cmp.Option {
 		cmpopts.IgnoreUnexported(publicpb.ListResponse{}),
 		cmpopts.IgnoreUnexported(privatepb.ListResponse{}),
 		cmpopts.IgnoreUnexported(exttimestamppb.Timestamp{}),
+		cmpopts.IgnoreUnexported(extemptypb.Empty{}),
 		cmpopts.IgnoreUnexported(extemptypb.Empty{}),
 	}
 }

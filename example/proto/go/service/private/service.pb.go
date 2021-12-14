@@ -11,7 +11,6 @@ import (
 	is "github.com/go-ozzo/ozzo-validation/v4/is"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	extemptypb "google.golang.org/protobuf/types/known/emptypb"
 	exttimestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
 	privatepb "github.com/dane/protoc-gen-go-svc/example/proto/go/private"
@@ -113,7 +112,7 @@ func SetBatchRequest_Creates(value []*privatepb.CreateRequest) BatchRequestMutat
 	}
 }
 
-type ExternalEmptyMutator func(*extemptypb.Empty)
+type PingRequestMutator func(*privatepb.PingRequest)
 
 func NewValidator() Validator {
 	return validator{}
@@ -155,10 +154,12 @@ type Validator interface {
 	ByBatchRequest(interface{}) error
 	ValidateBatchResponse(*privatepb.BatchResponse) error
 	ByBatchResponse(interface{}) error
+	ValidatePingRequest(*privatepb.PingRequest) error
+	ByPingRequest(interface{}) error
+	ValidatePingResponse(*privatepb.PingResponse) error
+	ByPingResponse(interface{}) error
 	ValidateExternalTimestamp(*exttimestamppb.Timestamp) error
 	ByExternalTimestamp(interface{}) error
-	ValidateExternalEmpty(*extemptypb.Empty) error
-	ByExternalEmpty(interface{}) error
 }
 
 type validator struct{}
@@ -533,6 +534,36 @@ func (v validator) ByBatchResponse(value interface{}) error {
 
 	return v.ValidateBatchResponse(in)
 }
+func (v validator) ValidatePingRequest(in *privatepb.PingRequest) error {
+	return validation.ValidateStruct(in)
+}
+
+func (v validator) ByPingRequest(value interface{}) error {
+	var in *privatepb.PingRequest
+	if v, ok := value.(*privatepb.PingRequest); ok {
+		in = v
+	} else {
+		v := value.(privatepb.PingRequest)
+		in = &v
+	}
+
+	return v.ValidatePingRequest(in)
+}
+func (v validator) ValidatePingResponse(in *privatepb.PingResponse) error {
+	return validation.ValidateStruct(in)
+}
+
+func (v validator) ByPingResponse(value interface{}) error {
+	var in *privatepb.PingResponse
+	if v, ok := value.(*privatepb.PingResponse); ok {
+		in = v
+	} else {
+		v := value.(privatepb.PingResponse)
+		in = &v
+	}
+
+	return v.ValidatePingResponse(in)
+}
 func (v validator) ValidateExternalTimestamp(in *exttimestamppb.Timestamp) error {
 	return nil
 }
@@ -547,21 +578,6 @@ func (v validator) ByExternalTimestamp(value interface{}) error {
 	}
 
 	return v.ValidateExternalTimestamp(in)
-}
-func (v validator) ValidateExternalEmpty(in *extemptypb.Empty) error {
-	return nil
-}
-
-func (v validator) ByExternalEmpty(value interface{}) error {
-	var in *extemptypb.Empty
-	if v, ok := value.(*extemptypb.Empty); ok {
-		in = v
-	} else {
-		v := value.(extemptypb.Empty)
-		in = &v
-	}
-
-	return v.ValidateExternalEmpty(in)
 }
 
 func (s *Service) Create(ctx context.Context, in *privatepb.CreateRequest) (*privatepb.CreateResponse, error) {
@@ -612,8 +628,8 @@ func (s *Service) Batch(ctx context.Context, in *privatepb.BatchRequest) (*priva
 	out, err := s.Impl.Batch(ctx, in)
 	return out, err
 }
-func (s *Service) Ping(ctx context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
-	if err := s.ValidateExternalEmpty(in); err != nil {
+func (s *Service) Ping(ctx context.Context, in *privatepb.PingRequest) (*privatepb.PingResponse, error) {
+	if err := s.ValidatePingRequest(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 
