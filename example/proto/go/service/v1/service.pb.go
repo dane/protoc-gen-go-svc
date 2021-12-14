@@ -120,11 +120,16 @@ type Converter interface {
 	ToPrivateExternalTimestamp(*exttimestamppb.Timestamp) *exttimestamppb.Timestamp
 
 	ToNextExternalTimestamp(*exttimestamppb.Timestamp) *exttimestamppb.Timestamp
-	ToPublicExternalEmpty(*extemptypb.Empty, *extemptypb.Empty) (*extemptypb.Empty, error)
-	ToDeprecatedPublicExternalEmpty(*extemptypb.Empty) (*extemptypb.Empty, error)
-	ToPrivateExternalEmpty(*extemptypb.Empty) *extemptypb.Empty
+	ToPublicPingInput_ExternalEmpty(*nextpb.PingRequest, *privatepb.PingRequest) (*extemptypb.Empty, error)
+	ToDeprecatedPublicPingInput_ExternalEmpty(*privatepb.PingRequest) (*extemptypb.Empty, error)
+	ToPrivatePingRequest(*extemptypb.Empty) *privatepb.PingRequest
 
-	ToNextExternalEmpty(*extemptypb.Empty) *extemptypb.Empty
+	ToNextPingRequest(*extemptypb.Empty) *nextpb.PingRequest
+	ToPublicPingOutput_ExternalEmpty(*nextpb.PingResponse, *privatepb.PingResponse) (*extemptypb.Empty, error)
+	ToDeprecatedPublicPingOutput_ExternalEmpty(*privatepb.PingResponse) (*extemptypb.Empty, error)
+	ToPrivatePingResponse(*extemptypb.Empty) *privatepb.PingResponse
+
+	ToNextPingResponse(*extemptypb.Empty) *nextpb.PingResponse
 }
 
 type converter struct{}
@@ -929,11 +934,28 @@ func (c converter) ToNextDeleteResponse(in *publicpb.DeleteResponse) *nextpb.Del
 	return &out
 }
 func (c converter) ToDeprecatedPublicListRequest(priv *privatepb.ListRequest) (*publicpb.ListRequest, error) {
-	return nil, nil
+	if priv == nil {
+		return nil, nil
+	}
+
+	required := make(validation.Errors)
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+
+	var out publicpb.ListRequest
+	var err error
+
+	return &out, err
 }
 
 func (c converter) ToPrivateListRequest(in *publicpb.ListRequest) *privatepb.ListRequest {
-	return nil
+	if in == nil {
+		return nil
+	}
+
+	var out privatepb.ListRequest
+	return &out
 }
 
 func (c converter) ToDeprecatedPublicListResponse(priv *privatepb.ListResponse) (*publicpb.ListResponse, error) {
@@ -986,19 +1008,103 @@ func (c converter) ToPrivateExternalTimestamp(in *exttimestamppb.Timestamp) *ext
 func (c converter) ToNextExternalTimestamp(in *exttimestamppb.Timestamp) *exttimestamppb.Timestamp {
 	return in
 }
-func (c converter) ToPublicExternalEmpty(in *extemptypb.Empty, priv *extemptypb.Empty) (*extemptypb.Empty, error) {
-	return in, nil
+func (c converter) ToPublicPingInput_ExternalEmpty(in *nextpb.PingRequest, priv *privatepb.PingRequest) (*extemptypb.Empty, error) {
+	if in == nil {
+		return nil, nil
+	}
+
+	required := make(validation.Errors)
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+
+	var out extemptypb.Empty
+	var err error
+
+	return &out, err
 }
-func (c converter) ToDeprecatedPublicExternalEmpty(priv *extemptypb.Empty) (*extemptypb.Empty, error) {
-	return priv, nil
+func (c converter) ToDeprecatedPublicPingInput_ExternalEmpty(priv *privatepb.PingRequest) (*extemptypb.Empty, error) {
+	if priv == nil {
+		return nil, nil
+	}
+
+	required := make(validation.Errors)
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+
+	var out extemptypb.Empty
+	var err error
+
+	return &out, err
 }
 
-func (c converter) ToPrivateExternalEmpty(in *extemptypb.Empty) *extemptypb.Empty {
-	return in
+func (c converter) ToPrivatePingRequest(in *extemptypb.Empty) *privatepb.PingRequest {
+	if in == nil {
+		return nil
+	}
+
+	var out privatepb.PingRequest
+	return &out
 }
 
-func (c converter) ToNextExternalEmpty(in *extemptypb.Empty) *extemptypb.Empty {
-	return in
+func (c converter) ToNextPingRequest(in *extemptypb.Empty) *nextpb.PingRequest {
+	if in == nil {
+		return nil
+	}
+
+	var out nextpb.PingRequest
+
+	return &out
+}
+func (c converter) ToPublicPingOutput_ExternalEmpty(in *nextpb.PingResponse, priv *privatepb.PingResponse) (*extemptypb.Empty, error) {
+	if in == nil {
+		return nil, nil
+	}
+
+	required := make(validation.Errors)
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+
+	var out extemptypb.Empty
+	var err error
+
+	return &out, err
+}
+func (c converter) ToDeprecatedPublicPingOutput_ExternalEmpty(priv *privatepb.PingResponse) (*extemptypb.Empty, error) {
+	if priv == nil {
+		return nil, nil
+	}
+
+	required := make(validation.Errors)
+	if err := required.Filter(); err != nil {
+		return nil, err
+	}
+
+	var out extemptypb.Empty
+	var err error
+
+	return &out, err
+}
+
+func (c converter) ToPrivatePingResponse(in *extemptypb.Empty) *privatepb.PingResponse {
+	if in == nil {
+		return nil
+	}
+
+	var out privatepb.PingResponse
+	return &out
+}
+
+func (c converter) ToNextPingResponse(in *extemptypb.Empty) *nextpb.PingResponse {
+	if in == nil {
+		return nil
+	}
+
+	var out nextpb.PingResponse
+
+	return &out
 }
 
 func NewValidator() Validator {
@@ -1035,8 +1141,10 @@ type Validator interface {
 	ByListResponse(interface{}) error
 	ValidateExternalTimestamp(*exttimestamppb.Timestamp) error
 	ByExternalTimestamp(interface{}) error
-	ValidateExternalEmpty(*extemptypb.Empty) error
-	ByExternalEmpty(interface{}) error
+	ValidatePingInput_ExternalEmpty(*extemptypb.Empty) error
+	ByPingInput_ExternalEmpty(interface{}) error
+	ValidatePingOutput_ExternalEmpty(*extemptypb.Empty) error
+	ByPingOutput_ExternalEmpty(interface{}) error
 }
 
 type validator struct{}
@@ -1320,11 +1428,11 @@ func (v validator) ByExternalTimestamp(value interface{}) error {
 
 	return v.ValidateExternalTimestamp(in)
 }
-func (v validator) ValidateExternalEmpty(in *extemptypb.Empty) error {
+func (v validator) ValidatePingInput_ExternalEmpty(in *extemptypb.Empty) error {
 	return nil
 }
 
-func (v validator) ByExternalEmpty(value interface{}) error {
+func (v validator) ByPingInput_ExternalEmpty(value interface{}) error {
 	var in *extemptypb.Empty
 	if v, ok := value.(*extemptypb.Empty); ok {
 		in = v
@@ -1333,7 +1441,22 @@ func (v validator) ByExternalEmpty(value interface{}) error {
 		in = &v
 	}
 
-	return v.ValidateExternalEmpty(in)
+	return v.ValidatePingInput_ExternalEmpty(in)
+}
+func (v validator) ValidatePingOutput_ExternalEmpty(in *extemptypb.Empty) error {
+	return nil
+}
+
+func (v validator) ByPingOutput_ExternalEmpty(value interface{}) error {
+	var in *extemptypb.Empty
+	if v, ok := value.(*extemptypb.Empty); ok {
+		in = v
+	} else {
+		v := value.(extemptypb.Empty)
+		in = &v
+	}
+
+	return v.ValidatePingOutput_ExternalEmpty(in)
 }
 
 func (s *Service) Create(ctx context.Context, in *publicpb.CreateRequest) (*publicpb.CreateResponse, error) {
@@ -1369,7 +1492,7 @@ func (s *Service) List(ctx context.Context, in *publicpb.ListRequest) (*publicpb
 	return out, err
 }
 func (s *Service) Ping(ctx context.Context, in *extemptypb.Empty) (*extemptypb.Empty, error) {
-	if err := s.ValidateExternalEmpty(in); err != nil {
+	if err := s.ValidatePingInput_ExternalEmpty(in); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 
@@ -1439,15 +1562,15 @@ func (s *Service) ListImpl(ctx context.Context, in *publicpb.ListRequest, mutato
 	}
 	return out, outPriv, nil
 }
-func (s *Service) PingImpl(ctx context.Context, in *extemptypb.Empty, mutators ...private.ExternalEmptyMutator) (*extemptypb.Empty, *extemptypb.Empty, error) {
+func (s *Service) PingImpl(ctx context.Context, in *extemptypb.Empty, mutators ...private.PingRequestMutator) (*extemptypb.Empty, *privatepb.PingResponse, error) {
 	// Set mutators for all deprecated fields
-	inNext := s.ToNextExternalEmpty(in)
+	inNext := s.ToNextPingRequest(in)
 	outNext, outPriv, err := s.Next.PingImpl(ctx, inNext, mutators...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	out, err := s.ToPublicExternalEmpty(outNext, outPriv)
+	out, err := s.ToPublicPingOutput_ExternalEmpty(outNext, outPriv)
 	if err != nil {
 		return nil, nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}

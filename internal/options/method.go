@@ -23,3 +23,9 @@ func MethodName(method *protogen.Method) string {
 
 	return string(method.Desc.Name())
 }
+
+func IsMethodConverterEmpty(method *protogen.Method) bool {
+	options := method.Desc.Options().(*descriptorpb.MethodOptions)
+	annotation := proto.GetExtension(options, svc.E_Method).(*svc.MethodAnnotation)
+	return annotation.GetConverter().GetEmpty()
+}
