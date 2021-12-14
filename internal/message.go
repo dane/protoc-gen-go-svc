@@ -17,7 +17,9 @@ type Message struct {
 	IsOneOf          bool
 	IsConverterEmpty bool
 	IsMatch          bool
+	IsInput          bool
 	Name             string
+	MethodName       string
 	ImportPath       string
 	PackageName      string
 	FullName         string
@@ -66,6 +68,14 @@ func (m *Message) PrivateType() string {
 
 func (m *Message) Ref() string {
 	if m.IsExternal {
+		if m.MethodName != "" {
+			dst := "Output"
+			if m.IsInput {
+				dst = "Input"
+			}
+			return fmt.Sprintf("%s%s_External%s", m.MethodName, dst, m.Name)
+		}
+
 		return fmt.Sprintf("External%s", m.Name)
 	}
 
@@ -185,6 +195,23 @@ func NewExternalMessage(svc *Service, message *protogen.Message) (*Message, erro
 	msg.Private = msg.Next.Private
 
 	return msg, nil
+}
+
+func NewMethodExternalMessage(svc *Service, method *protogen.Method, message *protogen.Message, isInput bool) *Message {
+	msg := &Message{
+		IsExternal: true,
+		IsLatest:   svc.IsLatest,
+		IsPrivate:  svc.IsPrivate,
+		IsInput:    isInput,
+		ImportPath: string(message.GoIdent.GoImportPath),
+		Name:       message.GoIdent.GoName,
+		MethodName: method.GoName,
+	}
+
+	importPath := strings.Split(msg.ImportPath, "/")
+	msg.PackageName = fmt.Sprintf("ext%s", importPath[len(importPath)-1])
+
+	return msg
 }
 
 func isMessageMatch(a, b *Message) bool {
