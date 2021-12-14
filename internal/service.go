@@ -80,29 +80,21 @@ func NewService(
 
 	// Create methods. All messages will be present at this point.
 	for _, method := range service.Methods {
+		// Create unique external messages that are method input or output.
+		// There may be duplicates, but that is intentional for conversion
+		// purposes.
+		var input, output *Message
 		if isExternalMessage(svc, method.Input) {
-			if _, ok := svc.MessageByName[messageKey(method.Input)]; !ok {
-				ext, err := NewExternalMessage(svc, method.Input)
-				if err != nil {
-					return nil, err
-				}
-				svc.MessageByName[messageKey(method.Input)] = ext
-				svc.Messages = append(svc.Messages, ext)
-			}
+			input = NewMethodExternalMessage(svc, method, method.Input, true)
+			svc.Messages = append(svc.Messages, input)
 		}
 
 		if isExternalMessage(svc, method.Output) {
-			if _, ok := svc.MessageByName[messageKey(method.Output)]; !ok {
-				ext, err := NewExternalMessage(svc, method.Output)
-				if err != nil {
-					return nil, err
-				}
-				svc.MessageByName[messageKey(method.Output)] = ext
-				svc.Messages = append(svc.Messages, ext)
-			}
+			output = NewMethodExternalMessage(svc, method, method.Output, false)
+			svc.Messages = append(svc.Messages, output)
 		}
 
-		m, err := NewMethod(svc, method)
+		m, err := NewMethod(svc, method, input, output)
 		if err != nil {
 			return nil, NewErrCreateService(svc, err)
 		}
